@@ -21,7 +21,6 @@ import { EmployeesPage } from '../employees/EmployeesPage'
 import { OrganizationPage } from '../organization/OrganizationPage'
 import { SettingsPage } from '../settings/SettingsPage'
 import { UsersPage } from '../users/UsersPage'
-import { OfflineAgentsPage } from '../offlineAgents/OfflineAgentsPage'
 import { ErrorBoundary } from './ErrorBoundary'
 import { PendingModule } from './PendingModule'
 
@@ -137,8 +136,6 @@ function renderPage(item: NavItem, session: SessionInfo, navigate: (id: string) 
       return <OrganizationPage session={session} />
     case 'users':
       return <UsersPage session={session} />
-    case 'offline-agents':
-      return <OfflineAgentsPage session={session} />
     case 'audit-log':
       return <AuditLogPage />
     case 'settings':

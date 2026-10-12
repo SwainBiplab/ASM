@@ -180,32 +180,4 @@ describe('legacy SQLite to PostgreSQL migration', () => {
       fixture.close()
     }
   })
-
-  it('refuses to apply while an offline lease is active on the target organization, writing nothing (W9.2, D49/F)', async () => {
-    const a = await session()
-    const fixture = buildLegacyFixture()
-    try {
-      const legacy = openLegacyDatabase(fixture.dbPath)
-      const [org] = await a.sql<{ id: string }>('SELECT id FROM organizations LIMIT 1')
-      const [admin] = await a.sql<{ id: string }>("SELECT id FROM users WHERE username_normalized = 'admin'")
-      const device = await a.ok('devices.requestEnrollment', { deviceUuid: randomUUID(), deviceName: 'Migration Guard Device' })
-      await a.ok('devices.approve', { deviceId: device.id, trustNotes: 'Verified' })
-      await a.ok('leases.request', { deviceId: device.id, scope: { kind: 'asset_code_range', count: 10 }, durationHours: 4 })
-
-      const opts = { organizationId: org!.id, actorUserId: admin!.id, legacyDocumentsRoot: fixture.docsRoot, storage: a.s.storage }
-      // plan/dry-run is unaffected: it never writes, so it stays usable for inspection.
-      const plan = await planLegacyMigration(legacy, a.s.tdb.db, opts)
-      expect(plan.aborted).toBe(false)
-
-      const applied = await applyLegacyMigration(legacy, a.s.tdb.db, opts)
-      expect(applied.aborted).toBe(true)
-      expect(applied.items[0]).toMatchObject({ action: 'reject', reason: expect.stringContaining('offline lease is active') })
-      expect(await a.sql('SELECT 1 FROM departments')).toHaveLength(0)
-      expect(await a.sql('SELECT 1 FROM assets WHERE asset_code = \'AST-000042\'')).toHaveLength(0)
-
-      legacy.close()
-    } finally {
-      fixture.close()
-    }
-  })
 })

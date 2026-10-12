@@ -644,3 +644,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; color:
 .activity-item__target { color: var(--ink); font-weight: 500; }
 .activity-item__date { font-size: 11px; color: var(--ink-faint); }
 
+/* Phone widths: the two-column section grid's 420px column minimum overflows a narrow viewport. */
+@media (max-width: 760px) {
+  .dash-grid-2col { grid-template-columns: minmax(0, 1fr); }
+}
+

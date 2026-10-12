@@ -1,7 +1,7 @@
 # BPO Asset Management System
 ## W9 Technical Architecture Specification — Offline Desktop Agent v1.0
 
-**Status: SUPERSEDED (DECISIONS.md D53).** The project owner changed the product direction to cloud-only; no Electron desktop agent will be built or shipped. The desktop-agent portions of this document (W9.3+: local SQLite, outbox, sync protocol, desktop shell/UI) are historical design record only. The server-side foundations this spec describes (device enrollment/leases, W9.2/D50; sync ingestion, W9.7/D52) remain implemented and in use by the cloud web app.  
+**Status: SUPERSEDED (DECISIONS.md D53/D54).** The project owner changed the product direction to cloud-only; no Electron desktop agent will be built or shipped (D53). The server-side foundations this spec describes (device enrollment/leases W9.2, sync ingestion W9.7) were initially retained but have since been removed entirely as well (D54), since there is no remaining plan for a client to consume them. This entire document is historical design record only — nothing it describes exists in the codebase today.  
 **Version:** 1.0  
 **Scope:** Controlled offline operation through a Windows desktop agent  
 **Parent specification:** `BPO_ASSET_MANAGEMENT_TAS_v2.0.md`  

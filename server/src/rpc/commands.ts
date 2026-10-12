@@ -34,7 +34,6 @@ import { buildW4Commands } from './commandsW4'
 import { buildW5Commands } from './commandsW5'
 import { buildW6Commands } from './commandsW6'
 import { buildW7Commands } from './commandsW7'
-import { buildW9Commands } from './commandsW9'
 import type { DocumentStorage } from '../storage/storage'
 import { getAssetMetrics } from '../services/assets'
 import { auditMetrics } from '../services/audits'
@@ -69,7 +68,6 @@ export function buildCommands(config: ServerConfig, storage: DocumentStorage): S
     ...buildW5Commands(storage),
     ...buildW6Commands(storage),
     ...buildW7Commands(),
-    ...buildW9Commands(config, storage),
     'system.getStartupState': {
       output: startupStateOutput, input: voidInputSchema,
       auth: 'public',

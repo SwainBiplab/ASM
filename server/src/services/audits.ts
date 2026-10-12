@@ -33,7 +33,6 @@ import { conflict, invalid, likePattern, Params, requireRow } from './common'
 import { listDocumentLinks } from './documents'
 import { auditFrom, recordAudit } from './foundation'
 import { loadLocationPaths } from './organization'
-import { assertAssetsNotLeased } from './offlineLeases'
 import { nextW5Number } from './maintenance'
 
 /**
@@ -382,7 +381,6 @@ export async function correctLocation(db: Db, storage: DocumentStorage, raw: Cor
     // Was previously read without a lock before an unlocked UPDATE; a concurrent write could overwrite
     // the correction, or race an unrelated location change, with neither side seeing the other's effect.
     const before = await t.one<{ locationId: string | null }>('SELECT location_id AS "locationId" FROM assets WHERE id = $1 FOR UPDATE', [item.assetId])
-    await assertAssetsNotLeased(t, org, [item.assetId])
     await t.exec('UPDATE assets SET location_id = $2, updated_at = now() WHERE id = $1', [item.assetId, input.newLocationId])
     await t.exec("UPDATE audit_items SET status = 'resolved', resolution_notes = $2, resolved_by = $3, resolved_at = now(), updated_at = now() WHERE id = $1", [item.id, input.reason, ctx.actor.userId])
     await recordAudit(t, {

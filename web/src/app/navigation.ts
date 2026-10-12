@@ -45,7 +45,6 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Administration',
     items: [
       { id: 'users', label: 'Users and roles', anyOf: ['users.manage', 'roles.manage'] },
-      { id: 'offline-agents', label: 'Offline agents', anyOf: ['leases.manage', 'devices.manage', 'leases.force_reclaim'] },
       { id: 'audit-log', label: 'Audit log', anyOf: ['audit_log.view'] },
       { id: 'settings', label: 'Settings', anyOf: 'any' }
     ]

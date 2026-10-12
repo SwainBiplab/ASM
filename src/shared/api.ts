@@ -120,17 +120,6 @@ import type {
   WarrantyReportInput
 } from './reportsSchemas'
 import type {
-  ApproveDeviceInput,
-  DeviceListInput,
-  ForceReclaimLeaseInput,
-  LeaseListInput,
-  LeaseRefInput,
-  RequestDeviceEnrollmentInput,
-  RequestLeaseInput,
-  RevokeDeviceInput
-} from './offlineLeasesSchemas'
-import type { UploadOfflineMaintenanceRequestInput, UploadOfflineObservationInput } from './offlineSyncSchemas'
-import type {
   AppSettings,
   AuditListInput,
   ChangePasswordInput,
@@ -1121,56 +1110,6 @@ export interface ExportResult {
   fileName: string | null
 }
 
-// ---------- W9.2: offline agent device enrollment and leases (web only) ----------
-
-export interface SyncDeviceView {
-  id: string
-  deviceUuid: string
-  deviceName: string
-  ownerUserId: string
-  ownerName: string | null
-  status: 'pending' | 'active' | 'revoked'
-  requestedAt: string
-  requestedByName: string | null
-  trustVerifiedAt: string | null
-  trustVerifiedByName: string | null
-  trustNotes: string | null
-  revokedAt: string | null
-  revokedByName: string | null
-  revokeReason: string | null
-}
-
-export interface OfflineLeaseView {
-  id: string
-  deviceId: string
-  deviceName: string
-  userId: string
-  userName: string | null
-  scopeType: 'asset' | 'asset_code_range'
-  status: 'active' | 'expired' | 'released' | 'reclaimed'
-  fencingEpoch: number
-  grantedAt: string
-  expiresAt: string
-  releasedAt: string | null
-  reclaimedAt: string | null
-  reclaimedByName: string | null
-  reclaimReason: string | null
-  assetIds: string[]
-  assetCodeRange: { prefix: string; separator: string; padding: number; formatVersion: number; rangeStart: number; rangeEnd: number } | null
-}
-
-// ---------- W9.7: offline sync ingestion (web only) ----------
-
-export interface OfflineUploadResult {
-  serverEntityId: string
-  /** True when this exact `clientRecordId` was already uploaded earlier; `serverEntityId` is the original, not a new duplicate. */
-  duplicate: boolean
-}
-
-export interface OfflineMaintenanceUploadResult extends OfflineUploadResult {
-  ticketNumber: string
-}
-
 // ---------- Command contract ----------
 
 /** Every allow-listed IPC command, its input DTO and its committed result. */
@@ -1321,18 +1260,6 @@ export interface CommandMap {
   'reports.procurementSummary': { input: ProcurementSummaryReportInput; output: ProcurementSummaryReport }
   'reports.warranty': { input: WarrantyReportInput; output: WarrantyReport }
   'reports.disposals': { input: DisposalReportInput; output: DisposalReport }
-  // W9.2 (web only; not part of the desktop prototype) — offline agent device enrollment and leases
-  'devices.requestEnrollment': { input: RequestDeviceEnrollmentInput; output: SyncDeviceView }
-  'devices.approve': { input: ApproveDeviceInput; output: SyncDeviceView }
-  'devices.revoke': { input: RevokeDeviceInput; output: SyncDeviceView }
-  'devices.list': { input: DeviceListInput; output: SyncDeviceView[] }
-  'leases.request': { input: RequestLeaseInput; output: OfflineLeaseView }
-  'leases.release': { input: LeaseRefInput; output: OfflineLeaseView }
-  'leases.forceReclaim': { input: ForceReclaimLeaseInput; output: OfflineLeaseView }
-  'leases.list': { input: LeaseListInput; output: OfflineLeaseView[] }
-  'leases.getScopedAssets': { input: LeaseRefInput; output: AssetListItem[] }
-  'offlineSync.uploadObservation': { input: UploadOfflineObservationInput; output: OfflineUploadResult }
-  'offlineSync.uploadMaintenanceRequest': { input: UploadOfflineMaintenanceRequestInput; output: OfflineMaintenanceUploadResult }
 }
 
 export type CommandName = keyof CommandMap
@@ -1483,18 +1410,7 @@ export const WEB_ONLY_COMMAND_NAMES = [
   'reports.maintenanceCost',
   'reports.procurementSummary',
   'reports.warranty',
-  'reports.disposals',
-  'devices.requestEnrollment',
-  'devices.approve',
-  'devices.revoke',
-  'devices.list',
-  'leases.request',
-  'leases.release',
-  'leases.forceReclaim',
-  'leases.list',
-  'leases.getScopedAssets',
-  'offlineSync.uploadObservation',
-  'offlineSync.uploadMaintenanceRequest'
+  'reports.disposals'
 ] as const satisfies readonly CommandName[]
 
 /** Commands available to the frozen desktop prototype (its command table must cover exactly these). */

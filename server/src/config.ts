@@ -39,18 +39,7 @@ const schema = z.object({
   /** Malware scanning (U3 open): only 'disabled' exists; uploads are stored as not_scanned. */
   DOCUMENT_SCANNING: z.enum(['disabled']).default('disabled'),
   /** Built browser application (`npm run web:build` → web/dist). When set, served same-origin at `/`. */
-  WEB_ROOT: z.string().min(1).optional(),
-  /**
-   * W9.7 safety gate (KNOWN_ISSUES W-44/W-45): offline sync upload commands exist and are tested,
-   * but default OFF. W-44 (the fencing-epoch sequence is not restore-safe) is unresolved, and W-45
-   * (device trust is attestation-only) has never been formally accepted as a business decision --
-   * per the W9.7 brief, uploads stay disabled until those are actually resolved, not merely coded
-   * around. Tests turn this on explicitly to exercise the upload path; do not enable in production.
-   */
-  SYNC_UPLOADS_ENABLED: z
-    .enum(['true', 'false'])
-    .default('false')
-    .transform((v) => v === 'true')
+  WEB_ROOT: z.string().min(1).optional()
 })
 
 export type ServerConfig = z.infer<typeof schema> & {

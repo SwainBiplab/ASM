@@ -67,23 +67,15 @@ export const W7_COMMANDS = [
   'reports.assetValuation', 'reports.maintenanceCost', 'reports.procurementSummary', 'reports.warranty', 'reports.disposals'
 ] as const satisfies readonly CommandName[]
 
-/** W9.2 offline-agent device enrollment and exclusive-lease commands (web only; server API/CLI only, no new UI screens yet). */
-export const W9_COMMANDS = [
-  'devices.requestEnrollment', 'devices.approve', 'devices.revoke', 'devices.list',
-  'leases.request', 'leases.release', 'leases.forceReclaim', 'leases.list', 'leases.getScopedAssets',
-  'offlineSync.uploadObservation', 'offlineSync.uploadMaintenanceRequest'
-] as const satisfies readonly CommandName[]
-
-export const SERVER_COMMANDS = [...W1_COMMANDS, ...W2_COMMANDS, ...W4_COMMANDS, ...W5_COMMANDS, ...W6_COMMANDS, ...W7_COMMANDS, ...W9_COMMANDS] as const
+export const SERVER_COMMANDS = [...W1_COMMANDS, ...W2_COMMANDS, ...W4_COMMANDS, ...W5_COMMANDS, ...W6_COMMANDS, ...W7_COMMANDS] as const
 export type ServerCommandName = (typeof SERVER_COMMANDS)[number]
 export type W2CommandName = (typeof W2_COMMANDS)[number]
 export type W4CommandName = (typeof W4_COMMANDS)[number]
 export type W5CommandName = (typeof W5_COMMANDS)[number]
 export type W6CommandName = (typeof W6_COMMANDS)[number]
 export type W7CommandName = (typeof W7_COMMANDS)[number]
-export type W9CommandName = (typeof W9_COMMANDS)[number]
 
-// Compile-time check that W4_COMMANDS + W5_COMMANDS + W6_COMMANDS + W7_COMMANDS + W9_COMMANDS together cover every web-only command (api.ts).
-type MissingWebOnlyCommands = Exclude<(typeof WEB_ONLY_COMMAND_NAMES)[number], W4CommandName | W5CommandName | W6CommandName | W7CommandName | W9CommandName>
+// Compile-time check that W4_COMMANDS + W5_COMMANDS + W6_COMMANDS + W7_COMMANDS together cover every web-only command (api.ts).
+type MissingWebOnlyCommands = Exclude<(typeof WEB_ONLY_COMMAND_NAMES)[number], W4CommandName | W5CommandName | W6CommandName | W7CommandName>
 const _webOnlyExhaustive: MissingWebOnlyCommands extends never ? true : never = true
 void _webOnlyExhaustive

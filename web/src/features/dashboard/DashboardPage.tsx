@@ -150,23 +150,26 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
 
       {/* High-Impact Interactive KPI Stat Cards */}
       <div className="dash-kpi-grid">
-        <div
-          className="dash-kpi-card"
-          style={{ '--kpi-accent': '#2563eb', '--kpi-icon-bg': 'rgba(37,99,235,0.1)' } as React.CSSProperties}
-          onClick={() => navigate('assets')}
-          title="Click to view all assets"
-        >
-          <div className="dash-kpi-card__top">
-            <span className="dash-kpi-card__title">Total Assets</span>
-            <span className="dash-kpi-card__icon">📦</span>
-          </div>
-          <div className="dash-kpi-card__value">{totalAssets}</div>
-          <div className="dash-kpi-card__sub">
-            <span className="dash-kpi-card__badge" style={{ background: 'rgba(37,99,235,0.12)', color: '#2563eb' }}>
-              ✓ Active Register
-            </span>
-            <span>Office No-515</span>
-          </div>
+        <div aria-label="Asset summary">
+          <button
+            type="button"
+            className="dash-kpi-card"
+            style={{ '--kpi-accent': '#2563eb', '--kpi-icon-bg': 'rgba(37,99,235,0.1)' } as React.CSSProperties}
+            onClick={() => navigate('assets')}
+            title="Click to view all assets"
+          >
+            <div className="dash-kpi-card__top">
+              <span className="dash-kpi-card__title">Active assets</span>
+              <span className="dash-kpi-card__icon">📦</span>
+            </div>
+            <div className="dash-kpi-card__value ledger__value">{totalAssets}</div>
+            <div className="dash-kpi-card__sub">
+              <span className="dash-kpi-card__badge" style={{ background: 'rgba(37,99,235,0.12)', color: '#2563eb' }}>
+                ✓ Active Register
+              </span>
+              <span>Office No-515</span>
+            </div>
+          </button>
         </div>
 
         <div
@@ -249,7 +252,7 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
           <div className="dash-panel__body">
             <div className="donut-wrapper">
               <div className="donut-svg-box">
-                <svg className="donut-svg" viewBox="0 0 200 200" aria-label="Asset status donut chart">
+                <svg className="donut-svg" viewBox="0 0 200 200" aria-label="Asset lifecycle distribution chart">
                   <circle cx="100" cy="100" r={radius} fill="none" stroke="var(--surface-sunk)" strokeWidth="18" />
                   {donutCalculated.map((seg) => {
                     const isHovered = hoveredSegment?.key === seg.key
@@ -552,7 +555,7 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
             <div className="ledger" aria-label="System summary" style={{ marginBottom: '14px' }}>
               <div className="ledger__cell">
                 <div className="ledger__value">{summary?.activeUsers ?? 1}</div>
-                <div className="ledger__label">Active operators</div>
+                <div className="ledger__label">Active user accounts</div>
               </div>
               <div className="ledger__cell">
                 <div className="ledger__value">{summary?.auditEventsLast7Days ?? 0}</div>

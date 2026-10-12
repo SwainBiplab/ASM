@@ -448,23 +448,6 @@ export async function planLegacyMigration(legacy: Database.Database, pg: Db, opt
 export async function applyLegacyMigration(legacy: Database.Database, pg: Db, opts: LegacyMigrationOptions): Promise<MigrationReport> {
   let report!: MigrationReport
   await pg.tx(async (t) => {
-    // F (W9.2, DECISIONS.md D49): a legacy import must never run while an offline device still holds
-    // a lease -- it could overwrite rows the device will try to reconcile on reconnect. plan/dry-run
-    // is unaffected, since it never writes.
-    const activeLease = await t.one<{ deviceName: string }>(
-      `SELECT d.device_name AS "deviceName" FROM offline_leases l JOIN sync_devices d ON d.id = l.device_id
-       WHERE l.organization_id = $1 AND l.status IN ('active', 'expired') LIMIT 1`,
-      [opts.organizationId]
-    )
-    if (activeLease) {
-      report = {
-        mode: 'apply',
-        items: [{ entity: 'organization', sourceId: '-', label: activeLease.deviceName, action: 'reject', reason: `an offline lease is active on device "${activeLease.deviceName}"; release or reclaim it before running the legacy migration` }],
-        counts: { organization: { insert: 0, skip: 0, reject: 1 } },
-        aborted: true
-      }
-      throw new RollbackForReport()
-    }
     report = await run(legacy, t, opts, true)
     if (report.aborted) throw new RollbackForReport()
   }).catch((err) => {

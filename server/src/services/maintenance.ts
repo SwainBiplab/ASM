@@ -25,7 +25,6 @@ import type { DocumentStorage } from '../storage/storage'
 import { conflict, invalid, likePattern, Params, requireRow } from './common'
 import { listDocumentLinks } from './documents'
 import { auditFrom, recordAudit } from './foundation'
-import { assertAssetsNotLeased } from './offlineLeases'
 
 /**
  * Maintenance tickets (W5, TAS §11). A ticket is a distinct, append-only-history record: closing
@@ -157,9 +156,7 @@ async function assertTechnician(t: SqlClient, org: string, userId: string, field
   if (!row?.ok) invalid(field, 'Choose an active user who holds a maintenance permission')
 }
 
-/** `allowLeaseId` (W9.7): only `offlineSync.ts` passes this, to let a synced ticket through on the
- *  asset its own authorized lease covers; every ordinary caller omits it and the C1 block applies. */
-export async function createTicket(db: Db, storage: DocumentStorage, raw: CreateTicketInput, ctx: OpContext, allowLeaseId?: string): Promise<MaintenanceTicketDetail> {
+export async function createTicket(db: Db, storage: DocumentStorage, raw: CreateTicketInput, ctx: OpContext): Promise<MaintenanceTicketDetail> {
   assertPermission(ctx.actor.permissions, 'maintenance.create')
   const input = createTicketSchema.parse(raw)
   const org = ctx.actor.organizationId
@@ -176,7 +173,6 @@ export async function createTicket(db: Db, storage: DocumentStorage, raw: Create
     const a = await t.one<{ code: string; lifecycle: string }>('SELECT asset_code AS code, lifecycle_status AS lifecycle FROM assets WHERE id = $1 AND organization_id = $2 FOR UPDATE', [input.assetId, org])
     if (!a) invalid('assetId', 'Asset not found')
     if (a.lifecycle !== 'active') conflict(`${a.code} is ${a.lifecycle}; a maintenance ticket can only be opened on an active asset.`)
-    await assertAssetsNotLeased(t, org, [input.assetId], allowLeaseId)
     const existing = await t.one<{ number: string }>(
       "SELECT ticket_number AS number FROM maintenance_tickets WHERE organization_id = $1 AND asset_id = $2 AND status IN ('open', 'in_progress') AND NOT justified_duplicate FOR UPDATE",
       [org, input.assetId]
@@ -315,7 +311,6 @@ export async function closeTicket(db: Db, storage: DocumentStorage, raw: CloseTi
     // The asset row itself was never locked here (only the ticket was); lock it before mutating its
     // operational status, the same discipline every other asset-state-changing path follows.
     await t.one('SELECT id FROM assets WHERE id = $1 AND organization_id = $2 FOR UPDATE', [ticket.assetId, ctx.actor.organizationId])
-    await assertAssetsNotLeased(t, ctx.actor.organizationId, [ticket.assetId])
     await t.exec("UPDATE maintenance_tickets SET status = 'closed', result_outcome = $2, closing_notes = $3, closed_by = $4, closed_at = now(), updated_at = now() WHERE id = $1", [
       input.ticketId, input.resultOutcome, input.closingNotes, ctx.actor.userId
     ])

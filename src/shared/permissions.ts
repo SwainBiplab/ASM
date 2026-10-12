@@ -56,10 +56,7 @@ export const PERMISSIONS = {
   'backup.create': 'Create and validate backups',
   'backup.restore': 'Restore from backup',
   'self.view_assigned': 'View own assigned assets',
-  'self.acknowledge': 'Acknowledge own asset issue/return',
-  'devices.manage': 'Enroll, verify trust, and revoke offline desktop agent devices',
-  'leases.manage': 'Request and release exclusive offline work-authority leases on an enrolled, trusted device',
-  'leases.force_reclaim': 'Force-reclaim another user\'s offline lease as the designated recovery authority'
+  'self.acknowledge': 'Acknowledge own asset issue/return'
 } as const
 
 export type PermissionKey = keyof typeof PERMISSIONS
@@ -96,7 +93,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
       'allocations.view', 'allocations.issue', 'allocations.transfer', 'allocations.return', 'allocations.inspect',
       'employees.view', 'locations.manage', 'exit_clearance.view', 'exit_clearance.manage',
       'maintenance.view', 'maintenance.create', 'audits.view', 'audits.manage', 'audits.verify', 'audits.resolve',
-      'reports.view', 'reports.export', 'reference_data.manage', 'backup.create', 'leases.manage'
+      'reports.view', 'reports.export', 'reference_data.manage', 'backup.create'
     ]
   },
   {
@@ -106,7 +103,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
     permissions: [
       'assets.view', 'maintenance.view', 'maintenance.create', 'maintenance.update',
       'maintenance.close', 'allocations.view', 'allocations.return', 'allocations.inspect',
-      'audits.view', 'audits.verify', 'reports.view', 'leases.manage'
+      'audits.view', 'audits.verify', 'reports.view'
     ]
   },
   {

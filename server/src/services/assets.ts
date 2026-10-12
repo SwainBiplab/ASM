@@ -22,7 +22,6 @@ import { normalizeSerial, serialUniqueKey } from './catalog'
 import { conflict, invalid, likePattern, Params, requireRow } from './common'
 import { listDocumentLinks } from './documents'
 import { loadLocationPaths } from './organization'
-import { assertAssetsNotLeased } from './offlineLeases'
 
 /** Exported for reuse by reports.ts (W7), which needs the same UTC-date arithmetic. */
 export const todayUtc = (): string => new Date().toISOString().slice(0, 10)
@@ -37,12 +36,11 @@ async function baseCurrency(c: SqlClient, ctx: OpContext): Promise<string> {
 
 interface CodeConfigRow extends AssetCodeFormat {
   nextNumber: number
-  formatVersion: number
 }
 
 async function readCodeConfig(c: SqlClient, org: string, lock: boolean): Promise<CodeConfigRow> {
   await c.exec("INSERT INTO asset_code_config (organization_id, prefix, separator, padding, next_number) VALUES ($1, 'AST', '-', 6, 1) ON CONFLICT DO NOTHING", [org])
-  return (await c.one<CodeConfigRow>(`SELECT prefix, separator, padding, next_number AS "nextNumber", format_version AS "formatVersion" FROM asset_code_config WHERE organization_id = $1${lock ? ' FOR UPDATE' : ''}`, [org]))!
+  return (await c.one<CodeConfigRow>(`SELECT prefix, separator, padding, next_number AS "nextNumber" FROM asset_code_config WHERE organization_id = $1${lock ? ' FOR UPDATE' : ''}`, [org]))!
 }
 
 export async function getAssetCodeConfig(c: SqlClient, ctx: OpContext): Promise<AssetCodeConfigView> {
@@ -64,23 +62,10 @@ export async function updateAssetCodeConfig(db: Db, raw: AssetCodeConfigInput, c
     if (await t.one('SELECT 1 FROM assets WHERE organization_id = $1 AND asset_code = $2', [org, preview])) {
       invalid('nextNumber', `${preview} is already in use. Choose a higher next number or a different prefix.`)
     }
-    const formatChanged = input.prefix !== before.prefix || input.separator !== before.separator || input.padding !== before.padding
-    if (formatChanged) {
-      // D49/D: an offline device may be mid-lease holding numbers reserved under the old format.
-      const outstanding = await t.one<{ n: string }>(
-        `SELECT COUNT(*) AS n FROM asset_code_reservations r JOIN offline_leases l ON l.id = r.lease_id
-         WHERE r.organization_id = $1 AND l.status IN ('active', 'expired')`,
-        [org]
-      )
-      if (Number(outstanding?.n ?? 0) > 0) {
-        conflict(`${outstanding!.n} offline asset-code reservation(s) are still outstanding under the current format. Release or reconcile them before changing the code format.`)
-      }
-    }
-    const formatVersion = formatChanged ? before.formatVersion + 1 : before.formatVersion
-    await t.exec('UPDATE asset_code_config SET prefix = $2, separator = $3, padding = $4, next_number = $5, format_version = $6, updated_at = now(), updated_by = $7 WHERE organization_id = $1', [
-      org, input.prefix, input.separator, input.padding, input.nextNumber, formatVersion, ctx.actor.userId
+    await t.exec('UPDATE asset_code_config SET prefix = $2, separator = $3, padding = $4, next_number = $5, updated_at = now(), updated_by = $6 WHERE organization_id = $1', [
+      org, input.prefix, input.separator, input.padding, input.nextNumber, ctx.actor.userId
     ])
-    await recordAudit(t, { ...auditFrom(ctx), eventType: 'asset_code_config.updated', entityType: 'asset_code_config', entityId: org, reason: input.reason, summary: { before, after: { prefix: input.prefix, separator: input.separator, padding: input.padding, nextNumber: input.nextNumber, formatVersion } } })
+    await recordAudit(t, { ...auditFrom(ctx), eventType: 'asset_code_config.updated', entityType: 'asset_code_config', entityId: org, reason: input.reason, summary: { before, after: { prefix: input.prefix, separator: input.separator, padding: input.padding, nextNumber: input.nextNumber } } })
     return getAssetCodeConfig(t, ctx)
   })
 }
@@ -95,24 +80,8 @@ export async function issueAssetCode(c: SqlClient, org: string): Promise<string>
   return formatAssetCode(cfg, n)
 }
 
-/**
- * Reserves a contiguous range of `count` numbers for exclusive offline use (W9.2, DECISIONS.md
- * D49/D). Locks the same `asset_code_config` row `issueAssetCode`/`updateAssetCodeConfig` already
- * lock, so a range reservation can never race normal online issuance or a format change -- they
- * all serialize on one row. Exported for `services/offlineLeases.ts`; the caller is responsible
- * for persisting the returned range alongside its own lease record in the same transaction.
- */
-export async function reserveAssetCodeRange(c: SqlClient, org: string, count: number): Promise<{ format: AssetCodeFormat; formatVersion: number; rangeStart: number; rangeEnd: number }> {
-  const cfg = await readCodeConfig(c, org, true)
-  const rangeStart = cfg.nextNumber
-  const rangeEnd = rangeStart + count
-  await c.exec('UPDATE asset_code_config SET next_number = $2 WHERE organization_id = $1', [org, rangeEnd])
-  return { format: { prefix: cfg.prefix, separator: cfg.separator, padding: cfg.padding }, formatVersion: cfg.formatVersion, rangeStart, rangeEnd }
-}
-
 // =============================== Queries ===============================
 
-/** Exported for reuse by offlineLeases.ts (W9.5), which returns the same list shape for a lease's scoped assets. */
 export const LIST_COLUMNS = `
   a.id, a.asset_code AS "assetCode", c.name AS "categoryName", c.asset_domain AS "assetDomain", a.manufacturer, a.model_name AS "modelName",
   a.serial_number AS "serialNumber", a.lifecycle_status AS "lifecycleStatus", a.operational_status AS "operationalStatus", a.condition,
@@ -434,7 +403,6 @@ export async function changeLifecycle(db: Db, storage: DocumentStorage, raw: Cha
       [input.id, ctx.actor.organizationId]
     )
     if (!a) throw new AppError('NOT_FOUND', 'Asset not found.')
-    await assertAssetsNotLeased(t, ctx.actor.organizationId, [input.id])
     const transition = LIFECYCLE_TRANSITIONS[a.s][input.toStatus]
     if (!transition) throw new AppError('STATE_CONFLICT', `An asset that is ${a.s} cannot be changed to ${input.toStatus}.`)
     assertPermission(ctx.actor.permissions, transition.permission)

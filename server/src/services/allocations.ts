@@ -27,7 +27,6 @@ import { conflict, invalid, likePattern, Params, requireRow } from './common'
 import { listDocumentLinks } from './documents'
 import { auditFrom, getSettings, recordAudit } from './foundation'
 import { loadLocationPaths } from './organization'
-import { assertAssetsNotLeased } from './offlineLeases'
 
 /**
  * Allocation, transfer, return, inspection and loss (W4, TAS §9). Every mutation runs in one
@@ -121,9 +120,6 @@ async function lockAssets(t: SqlClient, ctx: OpContext, ids: string[]): Promise<
     [ctx.actor.organizationId, ids]
   )
   if (rows.length !== ids.length) throw new AppError('NOT_FOUND', 'One or more assets were not found.')
-  // C1 (W9.2): an asset under an active offline lease cannot be mutated through the browser, even
-  // by the lease's own holder, since that could race their own not-yet-synced offline work.
-  await assertAssetsNotLeased(t, ctx.actor.organizationId, ids)
   return new Map(rows.map((r) => [r.id, r]))
 }
 

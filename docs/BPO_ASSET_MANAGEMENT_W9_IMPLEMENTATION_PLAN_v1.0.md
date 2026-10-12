@@ -1,7 +1,7 @@
 # BPO Asset Management System
 ## W9 Offline Desktop Agent — Implementation Plan v1.0
 
-**Status: SUPERSEDED (DECISIONS.md D53).** The product direction changed to cloud-only; the desktop agent this plan describes (W9.3–W9.6) was built and has since been removed. This document is kept as historical design record only. W9.2's server-side device/lease foundation and W9.7's gated sync ingestion remain implemented and in use.  
+**Status: SUPERSEDED (DECISIONS.md D53/D54).** The product direction changed to cloud-only; the desktop agent this plan describes (W9.3–W9.6) was built and has since been removed (D53). W9.2's server-side device/lease foundation and W9.7's gated sync ingestion were initially retained but have since been removed entirely too (D54). This document is kept as historical design record only — nothing it describes exists in the codebase today.  
 **Depends on:** Cloud W0–W8 implementation; verify actual repository/commit state before execution  
 **Primary specification:** `BPO_ASSET_MANAGEMENT_W9_OFFLINE_AGENT_TAS_v1.0.md`  
 **Parent specification:** `BPO_ASSET_MANAGEMENT_TAS_v2.0.md`
