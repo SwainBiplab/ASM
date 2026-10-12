@@ -30,27 +30,6 @@ export default defineConfig({
           testTimeout: 30000,
           hookTimeout: 60000
         }
-      },
-      {
-        resolve: { alias },
-        test: {
-          name: 'agent',
-          environment: 'node',
-          include: ['tests/agent/**/*.test.ts'],
-          // Real SQLite files on disk, like the prototype's own integration tests; isolate per file.
-          pool: 'forks'
-        }
-      },
-      {
-        resolve: { alias },
-        test: {
-          name: 'web',
-          environment: 'node',
-          // web/src/api.ts's browser behavior is otherwise proven by the real Playwright suite
-          // (test:web-e2e); this project covers the pure adapter-swap logic (W9.6) that doesn't
-          // need a real browser at all, without adding a jsdom dependency just for it.
-          include: ['tests/web/**/*.test.ts']
-        }
       }
     ]
   }

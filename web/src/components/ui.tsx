@@ -49,9 +49,10 @@ export function TextField({
 export function ErrorAlert({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   if (!error) return null
   const ref = error instanceof ApiError ? error.correlationId : null
+  const message = error instanceof ApiError ? error.message : (error instanceof Error ? error.message : 'Something went wrong. Reload the page and try again.')
   return (
     <div className="alert alert--error" role="alert">
-      {error instanceof ApiError ? error.message : 'Something went wrong. Reload the page and try again.'}
+      {message}
       {ref && ref !== '-' ? <span className="alert__ref">Reference {ref}</span> : null}
       {onRetry ? (
         <>

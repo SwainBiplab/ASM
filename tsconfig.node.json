@@ -20,8 +20,6 @@
   ],
   "exclude": [
     "tests/server/**",
-    "tests/web-e2e/**",
-    "tests/agent/**",
-    "tests/web/**"
+    "tests/web-e2e/**"
   ]
 }

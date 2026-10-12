@@ -6,5 +6,5 @@
     "jsx": "react-jsx",
     "types": ["vite/client"]
   },
-  "include": ["web/src/**/*", "src/shared/**/*", "agent/renderer-src/**/*", "agent/ipcContract.ts", "tests/web/**/*"]
+  "include": ["web/src/**/*", "src/shared/**/*"]
 }

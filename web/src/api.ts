@@ -41,7 +41,16 @@ export function onSessionInterrupted(listener: SessionListener): () => void {
 /** Commands that only read; everything else gets a fresh Idempotency-Key per user action (D36). */
 const READ_ONLY = /\.(list|get|search|lookup|getCurrent|getSummary|getStartupState|getCodeConfig|generateLabels|touch|importPreview)$/
 
-const newKey = (): string => crypto.randomUUID()
+const newKey = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
 
 /**
  * Commands the server makes retry-safe (idempotency 'required', D36). If the connection drops
@@ -91,18 +100,8 @@ async function unwrap<T>(res: Response): Promise<T> {
   throw new ApiError(error, res.status)
 }
 
-/**
- * The typed seam a screen's RPC calls actually go through (W9.6, DECISIONS.md D48/D51's adapter
- * plan). `call` below always delegates to whichever implementation is currently installed; the
- * browser's own HTTP implementation (`browserCall`) is installed by default and is exactly the
- * same code that ran before this refactor -- nothing about the web app's behavior changes unless
- * something explicitly calls `setCallTransport`. The desktop agent is the only other installer
- * today (`agent/renderer-src/desktopApiAdapter.ts`), swapped in once at its own entry point, never
- * from within a shared component.
- */
-export type CallTransport = <K extends CommandName>(command: K, ...args: CommandMap[K]['input'] extends void ? [] : [CommandMap[K]['input']]) => Promise<CommandMap[K]['output']>
-
-async function browserCall<K extends CommandName>(
+/** Invokes a command through `POST /api/v1/rpc/<command>`; resolves with data or throws ApiError. */
+export async function call<K extends CommandName>(
   command: K,
   ...args: CommandMap[K]['input'] extends void ? [] : [CommandMap[K]['input']]
 ): Promise<CommandMap[K]['output']> {
@@ -112,27 +111,6 @@ async function browserCall<K extends CommandName>(
   const init: RequestInit = { method: 'POST', headers, ...(args[0] !== undefined ? { body: JSON.stringify(args[0]) } : {}) }
   const path = `/api/v1/rpc/${encodeURIComponent(command)}`
   return unwrap<CommandMap[K]['output']>(await sendWithRetry(path, init, RETRY_SAFE.has(command)))
-}
-
-let activeTransport: CallTransport = browserCall
-
-/** Installs a non-browser transport (the desktop agent's local/offline adapter). Returns the previous one, mainly so tests can restore it. */
-export function setCallTransport(transport: CallTransport): CallTransport {
-  const previous = activeTransport
-  activeTransport = transport
-  return previous
-}
-
-export function resetCallTransport(): void {
-  activeTransport = browserCall
-}
-
-/** Invokes a command through whichever transport is installed; resolves with data or throws ApiError. */
-export async function call<K extends CommandName>(
-  command: K,
-  ...args: CommandMap[K]['input'] extends void ? [] : [CommandMap[K]['input']]
-): Promise<CommandMap[K]['output']> {
-  return activeTransport(command, ...args)
 }
 
 /** Uploads one file as multipart/form-data. The server picks the storage location (D35). */

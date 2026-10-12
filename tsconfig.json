@@ -15,9 +15,6 @@
     },
     {
       "path": "./tsconfig.e2e.json"
-    },
-    {
-      "path": "./tsconfig.agent.json"
     }
   ]
 }
