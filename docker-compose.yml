@@ -1,0 +1,70 @@
+# Local/staging stack only -- NOT a production topology (TAS §21: managed PostgreSQL and
+# managed object storage are required in production; see DECISIONS.md D47). This compose file
+# lets the portable app image, a real PostgreSQL, and an S3-compatible object store (MinIO) be
+# exercised together before a cloud provider is chosen.
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: bpoam
+      POSTGRES_PASSWORD: bpoam_dev_only
+      POSTGRES_DB: bpoam
+    ports: ["5432:5432"]
+    volumes: ["pg_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bpoam"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: bpoam-minio
+      MINIO_ROOT_PASSWORD: bpoam_dev_only
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["minio_data:/data"]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: creates the documents bucket in MinIO (idempotent).
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 bpoam-minio bpoam_dev_only &&
+      mc mb -p local/bpoam-documents"
+
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      APP_ENV: development
+      HOST: 0.0.0.0
+      PORT: "3000"
+      DATABASE_URL: postgres://bpoam:bpoam_dev_only@postgres:5432/bpoam
+      PUBLIC_ORIGIN: http://127.0.0.1:3000
+      STORAGE_DRIVER: s3
+      STORAGE_S3_BUCKET: bpoam-documents
+      STORAGE_S3_REGION: us-east-1
+      STORAGE_S3_ENDPOINT: http://minio:9000
+      STORAGE_S3_ACCESS_KEY_ID: bpoam-minio
+      STORAGE_S3_SECRET_ACCESS_KEY: bpoam_dev_only
+      STORAGE_S3_FORCE_PATH_STYLE: "true"
+      MIGRATE_ON_START: "true"
+    ports: ["3000:3000"]
+
+volumes:
+  pg_data:
+  minio_data:

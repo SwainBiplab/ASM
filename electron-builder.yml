@@ -1,0 +1,46 @@
+appId: com.bpo.assetmanagement
+productName: BPO Asset Management
+copyright: Copyright (c) BPO Asset Management Project
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**
+  - package.json
+  - "!**/*.map"
+  # better-sqlite3 ships N-API prebuilds for every platform; keep Windows only.
+  - "!node_modules/better-sqlite3/prebuilds/{darwin,linux,linuxmusl}-*.node"
+  - "!node_modules/better-sqlite3/prebuilds/win32-arm64.node"
+  - "!node_modules/better-sqlite3/{src,deps,binding.gyp}"
+  # bwip-js: only the self-contained Node build is used (src/main/services/labels.ts).
+  - "!node_modules/bwip-js/{src,barcode.ps,stb_truetype.h,lib}"
+  - "!node_modules/bwip-js/dist/{bwip-js.js,bwip-js.mjs,bwip-js-min.js,bwip-js-rn.mjs,bwip-js-gen.mjs,bwipp.mjs,bwip-js-node.mjs,*.d.ts}"
+# UI is English-only in Version 1; ship only the matching Chromium locale.
+electronLanguages:
+  - en-US
+asarUnpack:
+  - "**/*.node"
+# N-API prebuild is ABI-stable across Node/Electron; no native rebuild needed.
+npmRebuild: false
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  executableName: BPOAssetManagement
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: BPO Asset Management
+  # User data lives in %APPDATA% and must survive uninstall/upgrade.
+  deleteAppDataOnUninstall: false
+# Harden the packaged binary: it cannot be repurposed as a Node runtime or debugger.
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true

@@ -1,0 +1,72 @@
+# Dependencies and build output
+node_modules/
+out/
+release/
+build/
+dist/
+*.tsbuildinfo
+
+# Agent Electron build output
+agent/out/
+
+# Test artifacts
+test-results/
+playwright-report/
+coverage/
+
+# Local application data, databases and backups (may contain real records)
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+/data/
+/backups/
+smoke-report.json
+
+# Credentials and signing material
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.pem
+*.key
+*.cer
+*.crt
+*.p8
+
+# Logs and OS files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Editor and IDE files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary / scratch files
+scratch/
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# Browser build and local document storage
+web/dist/
+var/
+prompts/
+Dummydata/

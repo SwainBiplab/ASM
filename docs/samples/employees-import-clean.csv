@@ -1,0 +1,9 @@
+Employee ID,Full Name,Email,Phone,Job Title,Department,Team,Manager ID,Location,Status,Date of Joining
+E2001,Ritika Bose,ritika.bose@demobpo.example,+91 9876500001,Customer Support Associate,OPS,TEL-IN,E1008,PUN,Active,2026-10-01
+E2002,"Shah, Mohit",mohit.shah@demobpo.example,+91 9876500002,Customer Support Associate,Operations,Telecom Voice Inbound,E1008,PUN-A-2A,Active,2026-10-01
+E2003,Ayesha Siddiqui,ayesha.s@demobpo.example,,Chat Support Associate,OPS,BNK-CHAT,E2006,BLR,Active,2026-10-03
+E2004,Tom D'Cruz,tom.dcruz@demobpo.example,,Process Associate,OPS,HC-BO,E2006,PUN,On leave,2026-09-15
+E2005,Lavanya Krishnan,lavanya.k@demobpo.example,,Email Support Associate,OPS,RTL-EMAIL,E1001,BLR-1-1A,Active,2026-10-05
+E2006,Pradeep Yadav,pradeep.yadav@demobpo.example,+91 9876500006,Team Leader - Chat,OPS,BNK-CHAT,E1001,BLR,Active,2026-08-20
+E2007,"Kaur, Simran",simran.kaur@demobpo.example,,Desktop Support Engineer,IT,IT-DESK,,PUN-STORE,Notice period,2025-02-11
+E2008,Omkar Pawar,omkar.pawar@demobpo.example,,Trainer,QT,Training,,PUN-A-TR1,Active,2026-07-01

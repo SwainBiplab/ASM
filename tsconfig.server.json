@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "lib": ["ES2023"],
+    "types": ["node"]
+  },
+  "include": ["server/src/**/*", "src/shared/**/*", "src/main/database/migrator.ts", "src/main/database/migrations/**/*", "src/main/app/errors.ts", "src/main/app/ids.ts", "agent/main/cloudClient.ts", "tests/server/**/*", "web/vite.config.ts"]
+}

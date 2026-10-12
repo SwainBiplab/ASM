@@ -1,0 +1,14 @@
+node_modules
+out
+release
+dist
+web/dist
+test-results
+playwright-report
+coverage
+var
+.git
+.env
+*.sqlite
+*.db
+*.tsbuildinfo

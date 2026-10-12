@@ -1,0 +1,16 @@
+Employee ID,Full Name,Email,Department,Team,Manager ID,Location,Status,Date of Joining
+E3001,Valid Person,valid.person@demobpo.example,OPS,TEL-IN,E1008,PUN,Active,2026-10-01
+E1001,Clash With Existing Employee,,OPS,,,,Active,
+E3002,Twin Row One,,OPS,,,,,
+E3002,Twin Row Two,,OPS,,,,,
+E3003,,missing.name@demobpo.example,OPS,,,,,
+E3004,Bad Email,not-an-email,OPS,,,,,
+E3005,Unknown Department,,Marketing,,,,,
+E3006,Wrong Team For Dept,,IT,TEL-IN,,,,
+E3007,Bad Date,,OPS,,,,,31/02/2026
+E3008,Unknown Manager,,OPS,,E9999,,,
+E3009,Exited Status,,OPS,,,,Resigned,
+E3010,Short Row
+E3011,"=HYPERLINK(""http://example.com"",""Click me"")",,OPS,,,,,
+E3012,Closed Bay,,OPS,,,BLR-1-2C,,
+E3013,Shares Email,valid.person@demobpo.example,OPS,,,,,
