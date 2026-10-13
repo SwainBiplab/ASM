@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import jsQR from 'jsqr'
 import type { AssetLookupResult } from '@shared/api'
 import { call } from '../../api'
 import { Alert, Button, ErrorAlert, PageHeader, Panel } from '../../components/ui'
@@ -7,6 +8,8 @@ import { LifecycleBadge, OperationalBadge } from './shared'
 type Suffix = 'enter' | 'tab' | 'none'
 /** With no scanner suffix, a burst of keystrokes followed by this pause counts as one scan. */
 const IDLE_SUBMIT_MS = 150
+/** How often a video frame is sampled for a QR code. Faster than this gains nothing visible. */
+const DETECT_INTERVAL_MS = 200
 
 /**
  * USB scanners act as keyboards: they "type" the code, usually followed by Enter or Tab.
@@ -22,10 +25,86 @@ export function ScanPage({ navigate }: { navigate: (route: string) => void }) {
   const [recent, setRecent] = useState<Array<{ query: string; found: string | null }>>([])
   const [error, setError] = useState<unknown>(null)
 
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const detectTimerRef = useRef<number | undefined>(undefined)
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
+  /**
+   * TAS §8.2/U5's "controlled capability check": camera scanning only ever appears where the
+   * camera API exists. QR decoding itself is done with `jsqr` (pure JS, works wherever a canvas
+   * does) rather than the native Barcode Detection API, which in practice is absent from most
+   * desktop Chrome installs and all of Firefox/Safari -- relying on it left the feature invisible
+   * almost everywhere, defeating the point of a "controlled" check rather than an effectively-off one.
+   */
+  const cameraSupported = useMemo(() => typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia, [])
+
   useEffect(() => {
     call('settings.get').then((s) => setSuffix(s.scannerSuffix), () => undefined)
     inputRef.current?.focus()
   }, [])
+
+  const stopCamera = () => {
+    if (detectTimerRef.current !== undefined) window.clearInterval(detectTimerRef.current)
+    detectTimerRef.current = undefined
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    streamRef.current = null
+    setCameraOpen(false)
+  }
+
+  useEffect(() => stopCamera, [])
+
+  const startCamera = async () => {
+    setCameraError(null)
+    setError(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      streamRef.current = stream
+      setCameraOpen(true)
+    } catch {
+      setCameraError('Camera access was denied or is unavailable. Use a USB scanner or type the code below.')
+    }
+  }
+
+  // Runs only after React has committed the <video>/<canvas> elements (cameraOpen just became
+  // true), unlike a manually scheduled requestAnimationFrame racing that commit -- which could fire
+  // first and find the refs still null, silently leaving the camera "open" with nothing scanning.
+  useEffect(() => {
+    if (!cameraOpen) return
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    const stream = streamRef.current
+    if (!video || !canvas || !stream) return
+    video.srcObject = stream
+    void video.play()
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    if (!ctx) return
+
+    const tick = () => {
+      // Frames arrive before the video reports real dimensions; skip those rather than draw a 0x0 image.
+      if (video.readyState < video.HAVE_CURRENT_DATA || video.videoWidth === 0) return
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      let code: ReturnType<typeof jsQR> = null
+      try {
+        const frame = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        code = jsQR(frame.data, frame.width, frame.height)
+      } catch {
+        /* a transient read error on one frame is not fatal; the next tick tries again */
+      }
+      if (code) {
+        const value = code.data
+        stopCamera()
+        setText(value)
+        void submit(value)
+      }
+    }
+    detectTimerRef.current = window.setInterval(tick, DETECT_INTERVAL_MS)
+    return () => window.clearInterval(detectTimerRef.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraOpen])
 
   const submit = async (raw: string) => {
     window.clearTimeout(idleTimer.current)
@@ -78,8 +157,22 @@ export function ScanPage({ navigate }: { navigate: (route: string) => void }) {
           />
           <div className="chips">
             <Button variant="primary" onClick={() => void submit(text)}>Find</Button>
+            {cameraSupported && !cameraOpen ? <Button onClick={() => void startCamera()}>📷 Scan with camera</Button> : null}
+            {cameraOpen ? <Button onClick={stopCamera}>Stop camera</Button> : null}
             <span className="faint">Scanner suffix: {suffix === 'none' ? 'none (auto-detect pause)' : suffix === 'tab' ? 'Tab' : 'Enter'}. Change it in Settings.</span>
           </div>
+          {!cameraSupported && !cameraOpen ? (
+            <p className="faint">Camera scanning isn't available on this browser or device; use a USB scanner or type the code above.</p>
+          ) : null}
+          {cameraError ? <Alert tone="error">{cameraError}</Alert> : null}
+          {cameraOpen ? (
+            <div className="scan-camera">
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <video ref={videoRef} className="scan-camera__video" muted playsInline aria-label="Camera preview for QR scanning" />
+              <canvas ref={canvasRef} hidden aria-hidden="true" />
+              <p className="faint">Point the camera at an asset's QR label. Nothing changes until you confirm an action on the asset.</p>
+            </div>
+          ) : null}
         </div>
       </Panel>
       <ErrorAlert error={error} />
