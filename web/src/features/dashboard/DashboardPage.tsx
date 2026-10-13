@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { AssignmentView, CategoryView, DashboardSummary, MaintenanceTicketSummary, SessionInfo } from '@shared/api'
+import { formatMinor } from '@shared/assets'
 import { call } from '../../api'
 import { ErrorAlert, PageHeader } from '../../components/ui'
 
@@ -8,6 +9,15 @@ interface DonutSegment {
   label: string
   value: number
   color: string
+}
+
+const AUTO_REFRESH_MS = 60_000
+
+function timeAgo(seconds: number): string {
+  if (seconds < 5) return 'just now'
+  if (seconds < 60) return `${seconds}s ago`
+  const minutes = Math.floor(seconds / 60)
+  return `${minutes} min${minutes === 1 ? '' : 's'} ago`
 }
 
 export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (id: string) => void }) {
@@ -19,6 +29,8 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
   const [error, setError] = useState<unknown>(null)
   const [categoryDomainTab, setCategoryDomainTab] = useState<'all' | 'it' | 'facilities'>('all')
   const [hoveredSegment, setHoveredSegment] = useState<DonutSegment | null>(null)
+  const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null)
+  const [nowTick, setNowTick] = useState(() => Date.now())
 
   const load = () => {
     setError(null)
@@ -37,10 +49,23 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
         if (maintRes.status === 'fulfilled') setRecentTickets(maintRes.value.items)
         if (allocRes.status === 'fulfilled') setRecentAllocations(allocRes.value.items)
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        setLoading(false)
+        setLastLoadedAt(Date.now())
+      })
   }
 
   useEffect(load, [])
+
+  // Keeps the dashboard feeling live: a quiet background refresh plus a ticking "updated Xs ago" label.
+  useEffect(() => {
+    const refresh = setInterval(load, AUTO_REFRESH_MS)
+    const tick = setInterval(() => setNowTick(Date.now()), 1000)
+    return () => {
+      clearInterval(refresh)
+      clearInterval(tick)
+    }
+  }, [])
 
   // Calculations for KPI Cards and Donut Chart
   const totalAssets = summary?.assets?.totalActive ?? 0
@@ -107,6 +132,40 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
   const itPercentage = Math.round((itAssetCount / totalDomainAssets) * 100)
   const facPercentage = 100 - itPercentage
 
+  const topCategoriesByDomain = (domain: 'it' | 'facilities'): string =>
+    categories
+      .filter((c) => c.assetDomain === domain && (c.assetCount ?? 0) > 0)
+      .sort((a, b) => (b.assetCount ?? 0) - (a.assetCount ?? 0))
+      .slice(0, 3)
+      .map((c) => `${c.name} (${c.assetCount})`)
+      .join(', ') || 'No assets recorded yet'
+
+  // Real operational signals already returned by dashboard.getSummary but previously unused:
+  // warranty expiry, maintenance backlog, audit backlog, procurement queue and acquisition value.
+  const alerts = useMemo(() => {
+    const list: Array<{ key: string; label: string; value: string; tone: 'warn' | 'bad' | 'neutral'; onClick: () => void }> = []
+    const a = summary?.assets
+    if (a && a.warrantyExpiringSoon > 0) {
+      list.push({ key: 'warranty', label: `Warranty expiring within ${a.warrantyWindowDays}d`, value: String(a.warrantyExpiringSoon), tone: 'warn', onClick: () => navigate('assets') })
+    }
+    if (summary?.maintenance && summary.maintenance.overdue > 0) {
+      list.push({ key: 'maint-overdue', label: 'Overdue maintenance tickets', value: String(summary.maintenance.overdue), tone: 'bad', onClick: () => navigate('maintenance') })
+    }
+    if (summary?.maintenance && summary.maintenance.open > 0) {
+      list.push({ key: 'maint-open', label: 'Open maintenance tickets', value: String(summary.maintenance.open), tone: 'neutral', onClick: () => navigate('maintenance') })
+    }
+    if (summary?.audits && summary.audits.withUnresolvedItems > 0) {
+      list.push({ key: 'audits', label: 'Audits with unresolved items', value: String(summary.audits.withUnresolvedItems), tone: 'warn', onClick: () => navigate('audits') })
+    }
+    if (summary?.procurement && summary.procurement.pendingApprovals > 0) {
+      list.push({ key: 'procurement-approvals', label: 'Approvals awaiting decision', value: String(summary.procurement.pendingApprovals), tone: 'neutral', onClick: () => navigate('approvals') })
+    }
+    if (summary?.procurement && summary.procurement.openDiscrepancies > 0) {
+      list.push({ key: 'procurement-discrepancies', label: 'Open receipt discrepancies', value: String(summary.procurement.openDiscrepancies), tone: 'bad', onClick: () => navigate('receipts') })
+    }
+    return list
+  }, [summary, navigate])
+
   return (
     <div className="dash-container">
       <PageHeader
@@ -123,7 +182,7 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
             Quick Actions:
           </span>
           <button className="dash-chip-btn dash-chip-btn--primary" onClick={() => navigate('assets')}>
-            Browse 563 Assets
+            Browse {totalAssets} Asset{totalAssets === 1 ? '' : 's'}
           </button>
           <button className="dash-chip-btn" onClick={() => navigate('allocations')}>
             Issue / Return Equipment
@@ -138,19 +197,27 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
             Staff Directory
           </button>
         </div>
-        <button
-          className="dash-chip-btn"
-          style={{ background: 'transparent', borderColor: 'transparent' }}
-          onClick={load}
-          title="Refresh statistics"
-        >
-          {loading ? 'Refreshing…' : '↻ Refresh Data'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {lastLoadedAt && !loading ? (
+            <span className="faint" style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+              <span className="dash-live-dot" aria-hidden="true" />
+              Updated {timeAgo(Math.max(0, Math.round((nowTick - lastLoadedAt) / 1000)))}
+            </span>
+          ) : null}
+          <button
+            className="dash-chip-btn"
+            style={{ background: 'transparent', borderColor: 'transparent' }}
+            onClick={load}
+            title="Refresh statistics"
+          >
+            {loading ? 'Refreshing…' : '↻ Refresh Data'}
+          </button>
+        </div>
       </div>
 
       {/* High-Impact Interactive KPI Stat Cards */}
       <div className="dash-kpi-grid">
-        <div aria-label="Asset summary">
+        <div aria-label="Asset summary" className="dash-kpi-card-wrap">
           <button
             type="button"
             className="dash-kpi-card"
@@ -167,7 +234,7 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
               <span className="dash-kpi-card__badge" style={{ background: 'rgba(37,99,235,0.12)', color: '#2563eb' }}>
                 ✓ Active Register
               </span>
-              <span>Office No-515</span>
+              <span>{categories.length} categor{categories.length === 1 ? 'y' : 'ies'} tracked</span>
             </div>
           </button>
         </div>
@@ -231,10 +298,29 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
                 All systems functional
               </span>
             )}
-            <span>2 faulty monitors</span>
+            <span>{nonOperational} non-operational</span>
           </div>
         </div>
       </div>
+
+      {alerts.length > 0 ? (
+        <section className="dash-panel dash-alerts" aria-label="Operational alerts">
+          <div className="dash-panel__header">
+            <div>
+              <h2>Needs attention</h2>
+              <p>Live counts across maintenance, audits and procurement</p>
+            </div>
+          </div>
+          <div className="dash-panel__body dash-alerts__body">
+            {alerts.map((a) => (
+              <button key={a.key} className={`dash-alert-chip dash-alert-chip--${a.tone}`} onClick={a.onClick}>
+                <span className="dash-alert-chip__value">{a.value}</span>
+                <span className="dash-alert-chip__label">{a.label}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* Main Interactive Graphs Grid */}
       <div className="dash-grid-2col">
@@ -417,7 +503,7 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
                   Top IT Hardware
                 </div>
                 <div style={{ fontSize: '15px', fontWeight: 600, marginTop: '4px' }}>
-                  Monitors (143), All-In-One (102), Wifi Adapters (39)
+                  {topCategoriesByDomain('it')}
                 </div>
               </div>
               <div style={{ padding: '12px', background: 'var(--surface-sunk)', borderRadius: '10px' }}>
@@ -425,7 +511,7 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
                   Top Facilities Items
                 </div>
                 <div style={{ fontSize: '15px', fontWeight: 600, marginTop: '4px' }}>
-                  Chairs (118), Plants (77), Air Conditioners (11)
+                  {topCategoriesByDomain('facilities')}
                 </div>
               </div>
             </div>
@@ -554,18 +640,30 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
           <div className="dash-panel__body">
             <div className="ledger" aria-label="System summary" style={{ marginBottom: '14px' }}>
               <div className="ledger__cell">
-                <div className="ledger__value">{summary?.activeUsers ?? 1}</div>
+                <div className="ledger__value">{summary ? summary.activeUsers : '—'}</div>
                 <div className="ledger__label">Active user accounts</div>
               </div>
               <div className="ledger__cell">
-                <div className="ledger__value">{summary?.auditEventsLast7Days ?? 0}</div>
+                <div className="ledger__value">{summary ? summary.auditEventsLast7Days : '—'}</div>
                 <div className="ledger__label">Audit events (7 days)</div>
               </div>
               <div className="ledger__cell">
-                <div className="ledger__value">v{summary?.schemaVersion ?? 10}</div>
+                <div className="ledger__value">{summary ? `v${summary.schemaVersion}` : '—'}</div>
                 <div className="ledger__label">Database schema</div>
               </div>
             </div>
+            {summary?.finance?.acquisitionValueByCurrency.length ? (
+              <p className="faint" style={{ marginBottom: '8px' }}>
+                Acquisition value on record:{' '}
+                {summary.finance.acquisitionValueByCurrency.map((c, i) => (
+                  <span key={c.currency}>
+                    {i > 0 ? ', ' : ''}
+                    <strong>{formatMinor(c.totalMinor, c.currency)}</strong> ({c.count} asset{c.count === 1 ? '' : 's'})
+                  </span>
+                ))}
+                .
+              </p>
+            ) : null}
             <p className="faint">
               Out of service assets: {summary?.assets?.lost ?? 0} lost, {summary?.assets?.retired ?? 0} retired, {summary?.assets?.disposed ?? 0} disposed.
             </p>

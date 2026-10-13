@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import {
   ASSET_DOMAINS,
+  ASSET_IMPORT_FIELDS,
   ASSET_SORTS,
   CONDITIONS,
   DISPOSAL_METHODS,
@@ -12,7 +13,8 @@ import {
   TRACKING_MODES,
   WARRANTY_FILTERS
 } from './assets'
-import { isoDateSchema } from './orgSchemas'
+import { IMPORT_DATE_FORMATS } from './organization'
+import { importIdSchema, isoDateSchema } from './orgSchemas'
 import { uuidSchema } from './schemas'
 
 /** Input schemas for M3 asset-register commands (strict objects; unknown keys rejected). */
@@ -162,3 +164,31 @@ export const removeDocumentLinkSchema = z.strictObject({ linkId: uuidSchema, rea
 export type RemoveDocumentLinkInput = z.infer<typeof removeDocumentLinkSchema>
 
 export const documentRefSchema = z.strictObject({ documentId: uuidSchema })
+
+// ---------- Asset import ----------
+
+export const assetImportMappingSchema = z.strictObject(
+  Object.fromEntries(ASSET_IMPORT_FIELDS.map((f) => [f, z.number().int().min(0).max(199).nullable()])) as Record<
+    (typeof ASSET_IMPORT_FIELDS)[number],
+    z.ZodNullable<z.ZodNumber>
+  >
+)
+export type AssetImportMapping = z.infer<typeof assetImportMappingSchema>
+
+export const assetImportPreviewInputSchema = z.strictObject({
+  importId: importIdSchema,
+  mapping: assetImportMappingSchema,
+  dateFormat: z.enum(IMPORT_DATE_FORMATS)
+})
+export type AssetImportPreviewInput = z.infer<typeof assetImportPreviewInputSchema>
+
+export const assetImportCommitInputSchema = z.strictObject({
+  importId: importIdSchema,
+  mapping: assetImportMappingSchema,
+  dateFormat: z.enum(IMPORT_DATE_FORMATS),
+  /** When false (default), any rejected row blocks the whole import. */
+  skipInvalidRows: z.boolean()
+})
+export type AssetImportCommitInput = z.infer<typeof assetImportCommitInputSchema>
+
+export const assetImportRefSchema = z.strictObject({ importId: importIdSchema })

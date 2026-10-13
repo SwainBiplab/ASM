@@ -424,13 +424,17 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; color:
   gap: 16px;
 }
 .dash-kpi-card {
-  position: relative; overflow: hidden;
+  position: relative; overflow: hidden; width: 100%; height: 100%;
   padding: 18px 20px; border-radius: var(--radius-panel);
   background: var(--surface); box-shadow: var(--shadow-raised);
   border: 1px solid var(--line); text-align: left;
   cursor: pointer; transition: all 0.25s ease;
   display: flex; flex-direction: column; justify-content: space-between;
 }
+/* The "Asset summary" card needs an aria-label on a wrapper (getByLabel requires a landmark
+   distinct from the button it contains), but that wrapper must not add its own box in the grid --
+   it should stretch exactly like every other card's own grid cell, with no visible gap beneath it. */
+.dash-kpi-card-wrap { display: flex; }
 .dash-kpi-card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow-raised-strong);
@@ -648,4 +652,45 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; color:
 @media (max-width: 760px) {
   .dash-grid-2col { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Live-updated indicator */
+.dash-live-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--success);
+  box-shadow: 0 0 0 0 rgba(36, 170, 107, 0.5);
+  animation: dash-pulse 2s infinite;
+}
+@keyframes dash-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(36, 170, 107, 0.45); }
+  70% { box-shadow: 0 0 0 6px rgba(36, 170, 107, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(36, 170, 107, 0); }
+}
+
+/* Operational alert chips -- real, permission-gated counts (warranty/maintenance/audits/procurement) */
+.dash-alerts__body { display: flex; flex-wrap: wrap; gap: 10px; }
+.dash-alert-chip {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--surface-sunk); cursor: pointer; text-align: left;
+  transition: all 0.2s ease; font: inherit;
+}
+.dash-alert-chip:hover { transform: translateY(-2px); box-shadow: var(--shadow-raised-sm); }
+.dash-alert-chip__value { font-size: 20px; font-weight: 700; line-height: 1; }
+.dash-alert-chip__label { font-size: 11px; color: var(--ink-soft); }
+.dash-alert-chip--warn { border-color: rgba(217, 119, 6, 0.35); }
+.dash-alert-chip--warn .dash-alert-chip__value { color: #d97706; }
+.dash-alert-chip--bad { border-color: rgba(220, 38, 38, 0.35); }
+.dash-alert-chip--bad .dash-alert-chip__value { color: var(--danger); }
+.dash-alert-chip--neutral .dash-alert-chip__value { color: var(--action); }
+
+/* A single, orchestrated entrance for the dashboard's own sections -- not applied anywhere else. */
+@keyframes dash-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.dash-container > * { animation: dash-rise 0.35s ease backwards; }
+.dash-container > *:nth-child(2) { animation-delay: 0.03s; }
+.dash-container > *:nth-child(3) { animation-delay: 0.06s; }
+.dash-container > *:nth-child(4) { animation-delay: 0.09s; }
+.dash-container > *:nth-child(5) { animation-delay: 0.12s; }
+.dash-container > *:nth-child(n+6) { animation-delay: 0.15s; }
 

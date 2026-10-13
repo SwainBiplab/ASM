@@ -1,6 +1,9 @@
 import { z } from 'zod'
 import {
   assetCodeConfigSchema,
+  assetImportCommitInputSchema,
+  assetImportPreviewInputSchema,
+  assetImportRefSchema,
   assetLookupSchema,
   assetSearchSchema,
   catalogListSchema,
@@ -46,6 +49,7 @@ import { voidInputSchema } from '@shared/schemas'
 import { AppError, type OpContext } from '../core'
 import type { DocumentStorage } from '../storage/storage'
 import { cancelEmployeeImport, commitEmployeeImport, previewEmployeeImport } from '../imports/employeeImport'
+import { cancelAssetImport, commitAssetImport, previewAssetImport } from '../imports/assetImport'
 import * as assets from '../services/assets'
 import * as catalog from '../services/catalog'
 import { removeDocumentLink } from '../services/documents'
@@ -135,6 +139,17 @@ export function buildW2Commands(storage: DocumentStorage): { [K in W2CommandName
     'assets.changeLifecycle': { input: changeLifecycleSchema, output: out.assetDetailOutput, auth: session, idempotency: optional, handler: (i, c) => assets.changeLifecycle(c.db, storage, i, op(c)) },
     'assets.lookup': { input: assetLookupSchema, output: out.assetLookupOutput, auth: session, handler: (i, c) => assets.lookupAsset(c.db, i, op(c)) },
     'assets.generateLabels': { input: labelRequestSchema, output: z.array(out.assetLabelOutput), auth: session, handler: (i, c) => generateLabels(c.db, i, op(c)) },
+    'assets.importPreview': { input: assetImportPreviewInputSchema, output: out.assetImportPreviewOutput, auth: session, handler: (i, c) => previewAssetImport(c.db, i, op(c)) },
+    'assets.importCommit': { input: assetImportCommitInputSchema, output: out.importResultOutput, auth: session, idempotency: 'required', handler: (i, c) => commitAssetImport(c.db, i, op(c)) },
+    'assets.importCancel': {
+      input: assetImportRefSchema,
+      output: nullOutput,
+      auth: session,
+      handler: async (i, c) => {
+        await cancelAssetImport(c.db, i.importId, op(c))
+        return null
+      }
+    },
 
     // ---- documents (upload/download are HTTP routes, D35)
     'documents.removeLink': {

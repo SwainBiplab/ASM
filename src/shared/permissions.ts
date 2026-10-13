@@ -11,6 +11,7 @@ export const PERMISSIONS = {
   'assets.dispose': 'Approve asset disposal / write-off',
   'labels.print': 'Generate and print asset labels',
   'assets.configure_codes': 'Configure asset code prefix and numbering',
+  'assets.import': 'Bulk-import individually tracked assets from a CSV or Excel file',
   'allocations.issue': 'Issue assets',
   'allocations.transfer': 'Transfer assets',
   'allocations.return': 'Receive returned assets',
@@ -89,7 +90,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
     name: 'Asset Manager',
     description: 'Asset register, allocation, transfers, returns, labels and physical audits.',
     permissions: [
-      'assets.view', 'assets.create', 'assets.update', 'assets.retire', 'labels.print',
+      'assets.view', 'assets.create', 'assets.update', 'assets.retire', 'assets.import', 'labels.print',
       'allocations.view', 'allocations.issue', 'allocations.transfer', 'allocations.return', 'allocations.inspect',
       'employees.view', 'locations.manage', 'exit_clearance.view', 'exit_clearance.manage',
       'maintenance.view', 'maintenance.create', 'audits.view', 'audits.manage', 'audits.verify', 'audits.resolve',

@@ -28,6 +28,7 @@ import { optionList } from '../organization/lookups'
 import { LabelSheet, LifecycleBadge, OperationalBadge, WarrantyNote, conditionLabel } from './shared'
 import { CustodyPanel } from '../allocations/CustodyPanel'
 import { AssetMaintenanceSection } from '../maintenance/AssetMaintenanceSection'
+import { AssetImport } from './AssetImport'
 
 const PAGE_SIZE = 50
 
@@ -51,6 +52,7 @@ function useAssetLookups(): Lookups {
 export function AssetsPage({ session, selectedId, navigate }: { session: SessionInfo; selectedId: string | null; navigate: (route: string) => void }) {
   const has = (p: string) => session.permissions.includes(p as never)
   const lookups = useAssetLookups()
+  const [mode, setMode] = useState<'list' | 'import'>('list')
   const [filters, setFilters] = useState({ query: '', categoryId: '', lifecycle: 'active', operational: '', locationId: '', warranty: 'any' as WarrantyFilter })
   const [sort, setSort] = useState<{ by: AssetSort; dir: 'asc' | 'desc' }>({ by: 'code', dir: 'asc' })
   const [page, setPage] = useState(1)
@@ -125,6 +127,18 @@ export function AssetsPage({ session, selectedId, navigate }: { session: Session
     else navigate(`assets/${a.id}`)
   }
 
+  if (mode === 'import') {
+    return (
+      <AssetImport
+        onDone={(message) => {
+          setMode('list')
+          if (message) setNotice(message)
+          load()
+        }}
+      />
+    )
+  }
+
   const pages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1
   return (
     <div className="stack">
@@ -135,6 +149,7 @@ export function AssetsPage({ session, selectedId, navigate }: { session: Session
           <>
             {has('labels.print') && selected.size > 0 ? <Button onClick={() => setLabelIds([...selected])}>Print {selected.size} label{selected.size === 1 ? '' : 's'}</Button> : null}
             {has('reports.export') ? <Button onClick={() => void exportCsv()}>Export CSV</Button> : null}
+            {has('assets.import') ? <Button onClick={() => setMode('import')}>Import CSV/Excel</Button> : null}
             {has('assets.create') ? <Button variant="primary" onClick={() => setEditing('new')}>Add asset</Button> : null}
           </>
         }

@@ -81,3 +81,10 @@ export async function uploadImport(a: ApiSession, content: string | Uint8Array, 
   if (!r.body.ok) throw new Error(`import upload failed: ${JSON.stringify(r.body)}`)
   return r.body.data as CommandMap['employees.importPreview']['output']
 }
+
+/** Uploads a CSV (or raw Excel bytes) through the real asset-import route. May return a sheet-choice response. */
+export async function uploadAssetImport(a: ApiSession, content: string | Uint8Array, name = 'assets.csv', query = '') {
+  const r = await a.upload(`/api/v1/uploads/asset-import${query}`, { name, content, type: name.endsWith('.xlsx') ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv' })
+  if (!r.body.ok) throw new Error(`asset import upload failed: ${JSON.stringify(r.body)}`)
+  return r.body.data as CommandMap['assets.importPreview']['output'] | { needsSheetSelection: true; sheets: string[] }
+}

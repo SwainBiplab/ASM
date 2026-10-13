@@ -171,3 +171,45 @@ export const ASSET_SORTS = ['code', 'created', 'warranty', 'category'] as const
 export type AssetSort = (typeof ASSET_SORTS)[number]
 export const WARRANTY_FILTERS = ['any', 'in_warranty', 'expiring', 'expired', 'none'] as const
 export type WarrantyFilter = (typeof WARRANTY_FILTERS)[number]
+
+// ---------- Asset CSV/Excel import ----------
+// Scope: individually-tracked (serialized) categories only. Bulk/quantity-tracked stock is
+// recorded through procurement receipts, never through import. Asset codes are never imported —
+// they are always issued by the server, exactly like creating one asset at a time.
+
+export const ASSET_IMPORT_FIELDS = [
+  'category',
+  'manufacturer',
+  'modelName',
+  'serialNumber',
+  'condition',
+  'location',
+  'supplier',
+  'purchaseDate',
+  'acquisitionCost',
+  'invoiceReference',
+  'purchaseReference',
+  'warrantyStart',
+  'warrantyEnd',
+  'notes'
+] as const
+export type AssetImportField = (typeof ASSET_IMPORT_FIELDS)[number]
+
+export const REQUIRED_ASSET_IMPORT_FIELDS: ReadonlyArray<AssetImportField> = ['category']
+
+export const ASSET_IMPORT_FIELD_LABELS: Record<AssetImportField, string> = {
+  category: 'Category (name or code)',
+  manufacturer: 'Manufacturer',
+  modelName: 'Model name',
+  serialNumber: 'Serial number',
+  condition: 'Condition',
+  location: 'Location (name or code)',
+  supplier: 'Supplier (name or code)',
+  purchaseDate: 'Purchase date',
+  acquisitionCost: 'Acquisition cost',
+  invoiceReference: 'Invoice reference',
+  purchaseReference: 'Purchase reference',
+  warrantyStart: 'Warranty start',
+  warrantyEnd: 'Warranty end',
+  notes: 'Notes'
+}

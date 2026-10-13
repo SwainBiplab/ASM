@@ -7,8 +7,9 @@ import { AppError, type Actor, type Logger, type OpContext } from '../core'
 import type { Db } from '../db/sql'
 import { toCsv } from '../exports/csv'
 import { startEmployeeImport } from '../imports/employeeImport'
+import { startAssetImport } from '../imports/assetImport'
 import { failure, requestHash, toFailure, withIdempotency, type DispatchOutcome } from '../rpc/dispatcher'
-import { importPreviewOutput, documentLinkOutput } from '../rpc/responsesW2'
+import { importPreviewOutput, documentLinkOutput, assetImportUploadOutput } from '../rpc/responsesW2'
 import { exportAssetRows } from '../services/assets'
 import { exportAssetValuationRows, exportDisposalRows, exportMaintenanceCostRows, exportProcurementDiscrepancyRows, exportWarrantyRows } from '../services/reports'
 import { WEB_DOCUMENT_OWNER_TYPES, attachDocument, readDocument } from '../services/documents'
@@ -26,6 +27,7 @@ export interface FileRouteDeps {
 /** Route schemas for non-RPC routes (D34/D35): every query and path parameter is validated. */
 const uuid = z.string().uuid()
 const documentUploadQuery = z.strictObject({ entityType: z.enum(WEB_DOCUMENT_OWNER_TYPES), entityId: uuid, purpose: z.enum(DOCUMENT_PURPOSES) })
+const assetImportUploadQuery = z.strictObject({ sheet: z.string().trim().min(1).max(200).optional() })
 const documentParams = z.strictObject({ documentId: uuid })
 const assetExportQuery = z.strictObject({
   query: z.string().trim().max(200).optional(),
@@ -124,6 +126,23 @@ export function registerFileRoutes(app: FastifyInstance, deps: FileRouteDeps): v
       return send(reply, { status: 200, body: { ok: true, data: importPreviewOutput.parse(preview) } })
     } catch (err) {
       return send(reply, toFailure(err, ctx.correlationId, deps.logger, 'employees.importUpload'))
+    }
+  })
+
+  // ---- asset CSV/Excel import: stores an import session and returns the preview (no asset writes).
+  // An optional `?sheet=` chooses one sheet of a multi-sheet workbook; omitted, a multi-sheet file
+  // returns a sheet-choice response instead, and the caller re-uploads the same file with `sheet` set.
+  app.post('/api/v1/uploads/asset-import', async (req, reply) => {
+    const ctx = await guard(req, reply, { csrf: true })
+    if (!ctx) return reply
+    try {
+      if (!ctx.actor.permissions.has('assets.import')) throw new AppError('PERMISSION_DENIED', 'You do not have permission to perform this action.')
+      const query = assetImportUploadQuery.parse(req.query)
+      const file = await readSingleFile(req, IMPORT_MAX_BYTES)
+      const preview = await startAssetImport(deps.db, { fileName: file.fileName, data: file.data }, query.sheet ?? null, ctx)
+      return send(reply, { status: 200, body: { ok: true, data: assetImportUploadOutput.parse(preview) } })
+    } catch (err) {
+      return send(reply, toFailure(err, ctx.correlationId, deps.logger, 'assets.importUpload'))
     }
   })
 

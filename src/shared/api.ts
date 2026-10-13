@@ -1,7 +1,10 @@
 import type { Result } from './errors'
-import type { AssetCondition, AssetDomain, DisposalMethod, DocumentPurpose, LifecycleStatus, OperationalStatus, TrackingMode } from './assets'
+import type { AssetCondition, AssetDomain, AssetImportField, DisposalMethod, DocumentPurpose, LifecycleStatus, OperationalStatus, TrackingMode } from './assets'
 import type {
   AssetCodeConfigInput,
+  AssetImportCommitInput,
+  AssetImportMapping,
+  AssetImportPreviewInput,
   AssetLookupInput,
   AssetSearchInput,
   AttachDocumentInput,
@@ -1110,6 +1113,41 @@ export interface ExportResult {
   fileName: string | null
 }
 
+// ---------- Asset CSV/Excel import (web only; individually-tracked categories only) ----------
+
+export interface AssetImportIssue {
+  field: AssetImportField | null
+  severity: 'error' | 'warning'
+  message: string
+}
+
+export interface AssetImportRowView {
+  rowNumber: number
+  status: ImportRowStatus
+  values: Partial<Record<AssetImportField, string>>
+  issues: AssetImportIssue[]
+}
+
+export interface AssetImportPreview {
+  importId: string
+  fileName: string
+  fileBytes: number
+  headers: string[]
+  mapping: AssetImportMapping
+  dateFormat: ImportDateFormat
+  /** Problems with the file or mapping as a whole; rows are not validated while any exist. */
+  fileIssues: string[]
+  rows: AssetImportRowView[]
+  counts: ImportCounts
+}
+
+/** Returned by the upload route instead of a preview when an uploaded workbook has more than one
+ *  sheet and none was chosen yet; the client re-uploads the same file with a chosen sheet name. */
+export interface AssetImportSheetChoice {
+  needsSheetSelection: true
+  sheets: string[]
+}
+
 // ---------- Command contract ----------
 
 /** Every allow-listed IPC command, its input DTO and its committed result. */
@@ -1190,6 +1228,9 @@ export interface CommandMap {
   'assets.lookup': { input: AssetLookupInput; output: AssetLookupResult }
   'assets.generateLabels': { input: LabelRequestInput; output: AssetLabel[] }
   'assets.export': { input: AssetSearchInput; output: ExportResult }
+  'assets.importPreview': { input: AssetImportPreviewInput; output: AssetImportPreview }
+  'assets.importCommit': { input: AssetImportCommitInput; output: ImportResult }
+  'assets.importCancel': { input: { importId: string }; output: null }
   'documents.attach': { input: AttachDocumentInput; output: DocumentLinkView | null }
   'documents.removeLink': { input: RemoveDocumentLinkInput; output: null }
   // W4 (web only; not part of the desktop prototype)
@@ -1410,7 +1451,10 @@ export const WEB_ONLY_COMMAND_NAMES = [
   'reports.maintenanceCost',
   'reports.procurementSummary',
   'reports.warranty',
-  'reports.disposals'
+  'reports.disposals',
+  'assets.importPreview',
+  'assets.importCommit',
+  'assets.importCancel'
 ] as const satisfies readonly CommandName[]
 
 /** Commands available to the frozen desktop prototype (its command table must cover exactly these). */

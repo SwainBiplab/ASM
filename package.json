@@ -41,6 +41,7 @@
     "csv-parse": "7.0.3",
     "fastify": "5.12.5",
     "pg": "8.23.0",
+    "read-excel-file": "9.3.12",
     "zod": "4.6.5"
   },
   "devDependencies": {

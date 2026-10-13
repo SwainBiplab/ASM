@@ -34,6 +34,7 @@ export const W2_COMMANDS = [
   'suppliers.list', 'suppliers.create', 'suppliers.update', 'suppliers.setActive',
   'assets.getCodeConfig', 'assets.updateCodeConfig', 'assets.search', 'assets.get', 'assets.create', 'assets.update',
   'assets.changeLifecycle', 'assets.lookup', 'assets.generateLabels',
+  'assets.importPreview', 'assets.importCommit', 'assets.importCancel',
   'documents.removeLink'
 ] as const satisfies readonly CommandName[]
 
@@ -75,7 +76,9 @@ export type W5CommandName = (typeof W5_COMMANDS)[number]
 export type W6CommandName = (typeof W6_COMMANDS)[number]
 export type W7CommandName = (typeof W7_COMMANDS)[number]
 
-// Compile-time check that W4_COMMANDS + W5_COMMANDS + W6_COMMANDS + W7_COMMANDS together cover every web-only command (api.ts).
-type MissingWebOnlyCommands = Exclude<(typeof WEB_ONLY_COMMAND_NAMES)[number], W4CommandName | W5CommandName | W6CommandName | W7CommandName>
+// Compile-time check that W2_COMMANDS + W4_COMMANDS + W5_COMMANDS + W6_COMMANDS + W7_COMMANDS together cover every web-only command (api.ts).
+// W2 contributes here too: most of it is shared with the frozen prototype, but a few commands (the
+// asset importer) are web-only additions with no prototype equivalent, same as any W4+ command.
+type MissingWebOnlyCommands = Exclude<(typeof WEB_ONLY_COMMAND_NAMES)[number], W2CommandName | W4CommandName | W5CommandName | W6CommandName | W7CommandName>
 const _webOnlyExhaustive: MissingWebOnlyCommands extends never ? true : never = true
 void _webOnlyExhaustive

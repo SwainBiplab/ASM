@@ -72,7 +72,7 @@
 | K16 | Packaging | Repeated `package:dir` runs can fail with EPERM on `release\win-unpacked.tmp` (file lock from AV/indexer). Delete that folder and rerun. | Dev-environment only. |
 | K17 | Assets | Retire/lost/dispose and workstation/pool deactivation don't yet check active assignments (the assignments table arrives in M4); guards are marked in code. | M4. |
 | K18 | Assets | Bulk (quantity-tracked) categories can be defined but hold no stock until procurement receipts and stock movements (M6). | M6. |
-| K19 | Assets | No asset CSV/Excel import yet (needed for the pilot inventory baseline, TAS §19.10). | M8 pilot preparation. |
+| K19 | Assets | ~~No asset CSV/Excel import yet~~ resolved in the cloud app (DECISIONS.md D55): `assets.importPreview/importCommit/importCancel`, individually-tracked categories only. The historical desktop prototype still has no asset import; this row now only describes the frozen prototype. | Closed for the cloud app; prototype unaffected (frozen, out of scope) |
 | K20 | Labels | One fixed label layout (64×30 mm) printed through the system dialog; no label-printer-specific templates. | Revisit once label stock and printer are chosen. |
 | K21 | Scanning | Phone camera scanning is not implemented (TAS §10.4 security spike pending); USB and manual entry only. | Later spike. |
 | K22 | Permissions | Asset permissions are not scoped by IT vs facilities domain. | Business decision. |

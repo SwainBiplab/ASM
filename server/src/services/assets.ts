@@ -28,7 +28,7 @@ export const todayUtc = (): string => new Date().toISOString().slice(0, 10)
 export const addDays = (iso: string, days: number): string => new Date(Date.parse(`${iso}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10)
 const canViewCost = (ctx: OpContext): boolean => ctx.actor.permissions.has('finance.view_cost')
 
-async function baseCurrency(c: SqlClient, ctx: OpContext): Promise<string> {
+export async function baseCurrency(c: SqlClient, ctx: OpContext): Promise<string> {
   return (await c.one<{ c: string }>('SELECT base_currency AS c FROM organizations WHERE id = $1', [ctx.actor.organizationId]))!.c
 }
 
@@ -322,7 +322,7 @@ export async function resolveAssetRefs(
   return { modelId: input.modelId, manufacturer, modelName, serialNormalized, serialUniqueKey: uniqueKey }
 }
 
-async function parseCost(c: SqlClient, ctx: OpContext, value: string | null, field: string): Promise<number | null> {
+export async function parseCost(c: SqlClient, ctx: OpContext, value: string | null, field: string): Promise<number | null> {
   if (value === null) return null
   if (!canViewCost(ctx)) throw new AppError('PERMISSION_DENIED', 'You do not have permission to record financial values.', { [field]: 'Requires finance permission' })
   const currency = await baseCurrency(c, ctx)

@@ -2,6 +2,8 @@ import { z } from 'zod'
 import type {
   AssetCodeConfigView,
   AssetDetail,
+  AssetImportPreview,
+  AssetImportSheetChoice,
   AssetLabel,
   AssetListItem,
   AssetLookupResult,
@@ -19,7 +21,7 @@ import type {
   TeamView,
   WorkstationView
 } from '@shared/api'
-import { ASSET_DOMAINS, CONDITIONS, DISPOSAL_METHODS, DOCUMENT_PURPOSES, LIFECYCLE_STATUSES, OPERATIONAL_STATUSES, TRACKING_MODES } from '@shared/assets'
+import { ASSET_DOMAINS, ASSET_IMPORT_FIELDS, CONDITIONS, DISPOSAL_METHODS, DOCUMENT_PURPOSES, LIFECYCLE_STATUSES, OPERATIONAL_STATUSES, TRACKING_MODES } from '@shared/assets'
 import { EMPLOYMENT_STATUSES, IMPORT_DATE_FORMATS, IMPORT_FIELDS, LOCATION_TYPES, TEAM_KINDS, WORKSTATION_KINDS } from '@shared/organization'
 import { auditEventOutput, dateOnly, iso, nullable, uuid } from './responses'
 
@@ -125,3 +127,26 @@ export const assetLabelOutput: z.ZodType<AssetLabel> = z.object({
   assetId: uuid, assetCode: text, organizationName: text,
   qrDataUrl: z.string().startsWith('data:image/svg+xml;base64,'), barcodeDataUrl: z.string().startsWith('data:image/svg+xml;base64,')
 })
+
+const assetImportField = z.enum(ASSET_IMPORT_FIELDS)
+const assetImportMappingOutput = z.object(Object.fromEntries(ASSET_IMPORT_FIELDS.map((f) => [f, z.number().int().nullable()]))) as unknown as z.ZodType<AssetImportPreview['mapping']>
+export const assetImportPreviewOutput: z.ZodType<AssetImportPreview> = z.object({
+  importId: z.string().regex(/^[0-9a-f]{32}$/),
+  fileName: text,
+  fileBytes: int,
+  headers: z.array(text),
+  mapping: assetImportMappingOutput,
+  dateFormat: z.enum(IMPORT_DATE_FORMATS),
+  fileIssues: z.array(text),
+  rows: z.array(
+    z.object({
+      rowNumber: int,
+      status: z.enum(['accepted', 'warning', 'rejected', 'duplicate']),
+      values: z.partialRecord(assetImportField, text),
+      issues: z.array(z.object({ field: nullable(assetImportField), severity: z.enum(['error', 'warning']), message: text }))
+    })
+  ),
+  counts: importCounts
+})
+export const assetImportSheetChoiceOutput: z.ZodType<AssetImportSheetChoice> = z.object({ needsSheetSelection: z.literal(true), sheets: z.array(text) })
+export const assetImportUploadOutput: z.ZodType<AssetImportPreview | AssetImportSheetChoice> = z.union([assetImportPreviewOutput, assetImportSheetChoiceOutput])
