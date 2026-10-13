@@ -4,6 +4,8 @@ import {
   changePasswordInputSchema,
   createUserInputSchema,
   loginInputSchema,
+  passwordResetDismissInputSchema,
+  passwordResetRequestInputSchema,
   resetPasswordInputSchema,
   settingsUpdateInputSchema,
   updateRolePermissionsInputSchema,
@@ -18,11 +20,15 @@ import { getSettings, listAuditEvents, updateSettings } from '../services/founda
 import {
   changePassword,
   createUser,
+  dismissPasswordResetRequest,
+  listPasswordResetRequests,
   listRoles,
   listUsers,
   login,
   logout,
   organizationCount,
+  pendingPasswordResetCount,
+  requestPasswordReset,
   resetUserPassword,
   sessionInfo,
   updateRolePermissions,
@@ -46,6 +52,7 @@ import {
   dashboardOutput,
   nullOutput,
   pageOf,
+  passwordResetRequestSummaryOutput,
   roleSummaryOutput,
   sessionInfoOutput,
   settingsOutput,
@@ -126,6 +133,27 @@ export function buildCommands(config: ServerConfig, storage: DocumentStorage): S
         return null
       }
     },
+    'passwordReset.request': {
+      output: nullOutput, input: passwordResetRequestInputSchema,
+      auth: 'public',
+      handler: async (i, ctx) => {
+        await requestPasswordReset(ctx.db, i, meta(ctx))
+        return null
+      }
+    },
+    'passwordReset.list': {
+      output: z.array(passwordResetRequestSummaryOutput), input: voidInputSchema,
+      auth: 'session',
+      handler: (_i, ctx) => listPasswordResetRequests(ctx.db, op(ctx))
+    },
+    'passwordReset.dismiss': {
+      output: nullOutput, idempotency: 'optional', input: passwordResetDismissInputSchema,
+      auth: 'session',
+      handler: async (i, ctx) => {
+        await dismissPasswordResetRequest(ctx.db, i, op(ctx))
+        return null
+      }
+    },
     'roles.list': { output: z.array(roleSummaryOutput), input: voidInputSchema, auth: 'session', handler: (_i, ctx) => listRoles(ctx.db, op(ctx)) },
     'roles.updatePermissions': { output: roleSummaryOutput, idempotency: 'optional', input: updateRolePermissionsInputSchema, auth: 'session', handler: (i, ctx) => updateRolePermissions(ctx.db, i, op(ctx)) },
     'audit.list': { output: pageOf(auditEventOutput), input: auditListInputSchema, auth: 'session', handler: (i, ctx) => listAuditEvents(ctx.db, i, op(ctx)) },
@@ -151,7 +179,8 @@ export function buildCommands(config: ServerConfig, storage: DocumentStorage): S
           maintenance: await maintenanceMetrics(db, op(ctx)),
           audits: await auditMetrics(db, op(ctx)),
           procurement: await procurementMetrics(db, op(ctx)),
-          finance: await financeMetrics(db, op(ctx))
+          finance: await financeMetrics(db, op(ctx)),
+          pendingPasswordResets: await pendingPasswordResetCount(db, op(ctx))
         }
       }
     }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { RoleSummary, SessionInfo, UserSummary } from '@shared/api'
+import type { PasswordResetRequestSummary, RoleSummary, SessionInfo, UserSummary } from '@shared/api'
 import { PERMISSIONS, type PermissionKey } from '@shared/permissions'
 import { PASSWORD_MIN_LENGTH } from '@shared/constants'
 import { ApiError, call, formatDateTime } from '../../api'
@@ -17,6 +17,7 @@ export function UsersPage({ session }: { session: SessionInfo }) {
   const canRoles = session.permissions.includes('roles.manage')
   const [users, setUsers] = useState<UserSummary[]>([])
   const [roles, setRoles] = useState<RoleSummary[]>([])
+  const [resetRequests, setResetRequests] = useState<PasswordResetRequestSummary[]>([])
   const [error, setError] = useState<unknown>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [dialog, setDialog] = useState<DialogState>({ kind: 'none' })
@@ -24,7 +25,10 @@ export function UsersPage({ session }: { session: SessionInfo }) {
   const load = useCallback(async () => {
     try {
       setRoles(await call('roles.list'))
-      if (canUsers) setUsers(await call('users.list'))
+      if (canUsers) {
+        setUsers(await call('users.list'))
+        setResetRequests(await call('passwordReset.list'))
+      }
     } catch (err) {
       setError(err)
     }
@@ -42,6 +46,17 @@ export function UsersPage({ session }: { session: SessionInfo }) {
   }
   const close = useCallback(() => setDialog({ kind: 'none' }), [])
 
+  const dismissRequest = async (id: string) => {
+    try {
+      await call('passwordReset.dismiss', { id })
+      void load()
+    } catch (err) {
+      setError(err)
+    }
+  }
+
+  const pendingRequests = resetRequests.filter((r) => r.status === 'pending')
+
   return (
     <div className="stack">
       <PageHeader
@@ -51,6 +66,43 @@ export function UsersPage({ session }: { session: SessionInfo }) {
       />
       <ErrorAlert error={error} />
       {notice ? <Alert tone="success">{notice}</Alert> : null}
+
+      {canUsers && pendingRequests.length > 0 ? (
+        <Panel title="Password reset requests" flush>
+          <div className="table-wrap">
+            <table className="grid">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Message</th>
+                  <th>Requested</th>
+                  <th className="actions" aria-label="Actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {pendingRequests.map((r) => {
+                  const user = users.find((u) => u.id === r.userId)
+                  return (
+                    <tr key={r.id}>
+                      <td>
+                        {r.displayName} <span className="faint">({r.username})</span>
+                      </td>
+                      <td className="muted">{r.message ?? <span className="faint">No message</span>}</td>
+                      <td className="num">{formatDateTime(r.requestedAt)}</td>
+                      <td className="actions">
+                        {user ? (
+                          <Button small variant="quiet" onClick={() => setDialog({ kind: 'reset', user })}>Reset password</Button>
+                        ) : null}
+                        <Button small variant="quiet" onClick={() => void dismissRequest(r.id)}>Dismiss</Button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      ) : null}
 
       {canUsers ? (
         <Panel title="Users" flush>

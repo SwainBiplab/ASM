@@ -1,9 +1,11 @@
-import type { RoleSummary, SessionInfo, UserSummary } from '@shared/api'
+import type { PasswordResetRequestSummary, RoleSummary, SessionInfo, UserSummary } from '@shared/api'
 import { isPermissionKey, ROLE_TEMPLATES, resolveTemplatePermissions, SUPER_ADMIN_ROLE_KEY, type PermissionKey } from '@shared/permissions'
 import {
   changePasswordInputSchema,
   createUserInputSchema,
   loginInputSchema,
+  passwordResetDismissInputSchema,
+  passwordResetRequestInputSchema,
   resetPasswordInputSchema,
   setupInputSchema,
   updateRolePermissionsInputSchema,
@@ -11,6 +13,8 @@ import {
   type ChangePasswordInput,
   type CreateUserInput,
   type LoginInput,
+  type PasswordResetDismissInput,
+  type PasswordResetRequestInput,
   type ResetPasswordInput,
   type SetupInput,
   type UpdateRolePermissionsInput,
@@ -287,8 +291,76 @@ export async function resetUserPassword(db: Db, raw: ResetPasswordInput, ctx: Op
       [input.id, hash]
     )
     await revokeUserSessions(t, input.id, 'password_reset')
+    // Closes out any self-service request (U2) that prompted this reset, so the admin queue doesn't
+    // keep showing a request that was already acted on.
+    await t.exec(
+      `UPDATE password_reset_requests SET status = 'resolved', resolved_at = now(), resolved_by_user_id = $2 WHERE user_id = $1 AND status = 'pending'`,
+      [input.id, ctx.actor.userId]
+    )
     await recordAudit(t, { ...auditFrom(ctx), eventType: 'user.password_reset', entityType: 'user', entityId: input.id })
   })
+}
+
+// ---------------------------------------------------------------- self-service password-reset requests (U2)
+
+/**
+ * Public, unauthenticated: a user who forgot their password asks to be noticed. Never reveals
+ * whether `username` matched a real, active account -- the caller always sees the same outcome.
+ * Any error (bad input aside) is swallowed for the same reason: a different response for "no such
+ * organization" vs. "no such user" vs. "already requested" would itself leak information.
+ */
+export async function requestPasswordReset(db: Db, raw: PasswordResetRequestInput, meta: RequestMeta): Promise<void> {
+  const input = passwordResetRequestInputSchema.parse(raw)
+  try {
+    const orgId = await loginOrganizationId(db)
+    const normalized = input.username.trim().toLowerCase()
+    const user = await db.one<{ id: string }>('SELECT id FROM users WHERE organization_id = $1 AND username_normalized = $2 AND is_active', [orgId, normalized])
+    if (!user) return
+    await db.tx(async (t) => {
+      if (await t.one('SELECT 1 FROM password_reset_requests WHERE user_id = $1 AND status = $2', [user.id, 'pending'])) return
+      const id = newId()
+      await t.exec(
+        `INSERT INTO password_reset_requests (id, organization_id, user_id, message, requested_ip) VALUES ($1, $2, $3, $4, $5)`,
+        [id, orgId, user.id, input.message ?? null, meta.ip]
+      )
+      await recordAudit(t, { organizationId: orgId, actorUserId: null, eventType: 'auth.password_reset_requested', entityType: 'user', entityId: user.id, correlationId: meta.correlationId, ip: meta.ip })
+    })
+  } catch {
+    // Deliberately silent -- see function doc.
+  }
+}
+
+export async function listPasswordResetRequests(db: Db, ctx: OpContext): Promise<PasswordResetRequestSummary[]> {
+  assertPermission(ctx.actor.permissions, 'users.manage')
+  return db.many<PasswordResetRequestSummary>(
+    `SELECT r.id, r.user_id AS "userId", u.username, u.display_name AS "displayName", r.message, r.status,
+            r.requested_at AS "requestedAt", r.resolved_at AS "resolvedAt"
+     FROM password_reset_requests r JOIN users u ON u.id = r.user_id
+     WHERE r.organization_id = $1
+     ORDER BY (r.status = 'pending') DESC, r.requested_at DESC
+     LIMIT 200`,
+    [ctx.actor.organizationId]
+  )
+}
+
+export async function dismissPasswordResetRequest(db: Db, raw: PasswordResetDismissInput, ctx: OpContext): Promise<void> {
+  assertPermission(ctx.actor.permissions, 'users.manage')
+  const input = passwordResetDismissInputSchema.parse(raw)
+  await db.tx(async (t) => {
+    const r = await t.one<{ userId: string; status: string }>('SELECT user_id AS "userId", status FROM password_reset_requests WHERE id = $1 AND organization_id = $2', [
+      input.id, ctx.actor.organizationId
+    ])
+    if (!r) throw new AppError('NOT_FOUND', 'Request not found.')
+    if (r.status !== 'pending') throw new AppError('STATE_CONFLICT', 'This request was already handled.')
+    await t.exec(`UPDATE password_reset_requests SET status = 'dismissed', resolved_at = now(), resolved_by_user_id = $2 WHERE id = $1`, [input.id, ctx.actor.userId])
+    await recordAudit(t, { ...auditFrom(ctx), eventType: 'auth.password_reset_dismissed', entityType: 'user', entityId: r.userId })
+  })
+}
+
+/** Dashboard figure; null when the user cannot view/manage users. */
+export async function pendingPasswordResetCount(c: SqlClient, ctx: OpContext): Promise<number | null> {
+  if (!ctx.actor.permissions.has('users.manage')) return null
+  return (await c.one<{ n: number }>("SELECT count(*) AS n FROM password_reset_requests WHERE organization_id = $1 AND status = 'pending'", [ctx.actor.organizationId]))!.n
 }
 
 export async function listRoles(db: SqlClient, ctx: OpContext): Promise<RoleSummary[]> {

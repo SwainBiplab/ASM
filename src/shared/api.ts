@@ -128,6 +128,8 @@ import type {
   ChangePasswordInput,
   CreateUserInput,
   LoginInput,
+  PasswordResetDismissInput,
+  PasswordResetRequestInput,
   ResetPasswordInput,
   RestoreInput,
   SettingsUpdateInput,
@@ -192,6 +194,19 @@ export interface UserSummary {
   lastLoginAt: string | null
   roleKeys: string[]
   createdAt: string
+}
+
+/** Self-service "forgot password" request queue (U2). The submitter never learns whether a
+ * matching account exists; only an administrator with `users.manage` sees this list. */
+export interface PasswordResetRequestSummary {
+  id: string
+  userId: string
+  username: string
+  displayName: string
+  message: string | null
+  status: 'pending' | 'resolved' | 'dismissed'
+  requestedAt: string
+  resolvedAt: string | null
 }
 
 export interface RoleSummary {
@@ -290,6 +305,8 @@ export interface DashboardSummary {
   procurement?: { draftRequests: number; pendingApprovals: number; openDiscrepancies: number } | null
   /** W7 (web only): null when the user cannot view costs (`finance.view_cost`). Depreciation is intentionally absent (F1 unresolved). */
   finance?: { acquisitionValueByCurrency: CurrencyTotal[] } | null
+  /** Null when the user cannot manage users. Pending self-service password-reset requests (U2). */
+  pendingPasswordResets?: number | null
 }
 
 // ---------- Allocation and exit clearance (W4, web only) ----------
@@ -1168,6 +1185,9 @@ export interface CommandMap {
   'users.create': { input: CreateUserInput; output: UserSummary }
   'users.update': { input: UpdateUserInput; output: UserSummary }
   'users.resetPassword': { input: ResetPasswordInput; output: null }
+  'passwordReset.request': { input: PasswordResetRequestInput; output: null }
+  'passwordReset.list': { input: void; output: PasswordResetRequestSummary[] }
+  'passwordReset.dismiss': { input: PasswordResetDismissInput; output: null }
   'roles.list': { input: void; output: RoleSummary[] }
   'roles.updatePermissions': { input: UpdateRolePermissionsInput; output: RoleSummary }
   'audit.list': { input: AuditListInput; output: Page<AuditEventView> }
@@ -1392,6 +1412,9 @@ export const COMMAND_NAMES = [
 
 /** Commands that exist only in the web application (W4+); the desktop prototype never exposes them. */
 export const WEB_ONLY_COMMAND_NAMES = [
+  'passwordReset.request',
+  'passwordReset.list',
+  'passwordReset.dismiss',
   'allocations.list',
   'allocations.custody',
   'allocations.getHandover',

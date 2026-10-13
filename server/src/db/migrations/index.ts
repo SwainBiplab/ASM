@@ -8,8 +8,9 @@ import { migration0006 } from './0006_maintenance_audits'
 import { migration0007 } from './0007_procurement'
 import { migration0008 } from './0008_ops'
 import { migration0009 } from './0009_asset_import'
+import { migration0010 } from './0010_password_reset_requests'
 
 /** Ordered PostgreSQL migrations. Append only. */
-export const MIGRATIONS: readonly Migration[] = [migration0001, migration0002, migration0003, migration0004, migration0005, migration0006, migration0007, migration0008, migration0009]
+export const MIGRATIONS: readonly Migration[] = [migration0001, migration0002, migration0003, migration0004, migration0005, migration0006, migration0007, migration0008, migration0009, migration0010]
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.version

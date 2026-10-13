@@ -127,10 +127,19 @@ export async function buildApp({ config, db, storage: injected }: AppDeps): Prom
     {
       config: {
         rateLimit: {
-          // Stricter per-IP budget for login attempts; per-account lockout applies on top.
-          max: (req: FastifyRequest) => ((req.params as { command?: string }).command === 'session.login' ? config.LOGIN_RATE_LIMIT_PER_MINUTE : config.RATE_LIMIT_PER_MINUTE),
+          // Stricter per-IP budget for login attempts and password-reset requests (both are
+          // unauthenticated and could otherwise be used to brute-force or enumerate usernames);
+          // per-account lockout applies on top for logins.
+          max: (req: FastifyRequest) => {
+            const command = (req.params as { command?: string }).command
+            return command === 'session.login' || command === 'passwordReset.request' ? config.LOGIN_RATE_LIMIT_PER_MINUTE : config.RATE_LIMIT_PER_MINUTE
+          },
           timeWindow: '1 minute',
-          keyGenerator: (req: FastifyRequest) => `${req.ip}|${(req.params as { command?: string }).command === 'session.login' ? 'login' : 'api'}`
+          keyGenerator: (req: FastifyRequest) => {
+            const command = (req.params as { command?: string }).command
+            const bucket = command === 'session.login' ? 'login' : command === 'passwordReset.request' ? 'password-reset' : 'api'
+            return `${req.ip}|${bucket}`
+          }
         }
       }
     },

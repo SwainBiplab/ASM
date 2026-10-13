@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { AuditEventView, BackupSummary, DashboardSummary, Page, RoleSummary, SessionInfo, StartupState, UserSummary } from '@shared/api'
+import type { AuditEventView, BackupSummary, DashboardSummary, Page, PasswordResetRequestSummary, RoleSummary, SessionInfo, StartupState, UserSummary } from '@shared/api'
 import { ALL_PERMISSION_KEYS, type PermissionKey } from '@shared/permissions'
 import { settingsSchema } from '@shared/schemas'
 
@@ -46,6 +46,17 @@ export const userSummaryOutput: z.ZodType<UserSummary> = z.object({
   lastLoginAt: nullable(iso),
   roleKeys: z.array(z.string()),
   createdAt: iso
+})
+
+export const passwordResetRequestSummaryOutput: z.ZodType<PasswordResetRequestSummary> = z.object({
+  id: uuid,
+  userId: uuid,
+  username: z.string(),
+  displayName: z.string(),
+  message: nullable(z.string()),
+  status: z.enum(['pending', 'resolved', 'dismissed']),
+  requestedAt: iso,
+  resolvedAt: nullable(iso)
 })
 
 export const roleSummaryOutput: z.ZodType<RoleSummary> = z.object({
@@ -108,7 +119,8 @@ export const dashboardOutput: z.ZodType<DashboardSummary> = z.object({
   maintenance: z.object({ open: z.number().int(), overdue: z.number().int() }).nullable().optional(),
   audits: z.object({ open: z.number().int(), withUnresolvedItems: z.number().int() }).nullable().optional(),
   procurement: z.object({ draftRequests: z.number().int(), pendingApprovals: z.number().int(), openDiscrepancies: z.number().int() }).nullable().optional(),
-  finance: z.object({ acquisitionValueByCurrency: z.array(z.object({ currency: z.string(), totalMinor: z.number().int(), count: z.number().int() })) }).nullable().optional()
+  finance: z.object({ acquisitionValueByCurrency: z.array(z.object({ currency: z.string(), totalMinor: z.number().int(), count: z.number().int() })) }).nullable().optional(),
+  pendingPasswordResets: z.number().int().nullable().optional()
 })
 
 export const settingsOutput = settingsSchema

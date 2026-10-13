@@ -170,6 +170,9 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
     if (summary?.procurement && summary.procurement.openDiscrepancies > 0) {
       list.push({ key: 'procurement-discrepancies', label: 'Open receipt discrepancies', value: String(summary.procurement.openDiscrepancies), tone: 'bad', onClick: () => navigate('receipts') })
     }
+    if (summary?.pendingPasswordResets && summary.pendingPasswordResets > 0) {
+      list.push({ key: 'password-resets', label: 'Password reset requests', value: String(summary.pendingPasswordResets), tone: 'warn', onClick: () => navigate('users') })
+    }
     return list
   }, [summary, navigate])
 

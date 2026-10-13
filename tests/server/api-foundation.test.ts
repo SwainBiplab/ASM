@@ -191,3 +191,63 @@ describe('authorization and organization boundary', () => {
     expect(JSON.stringify(rows)).not.toContain(STAFF.password)
   })
 })
+
+describe('self-service password-reset requests (U2)', () => {
+  it('never reveals whether the username matched a real account, from an unauthenticated caller', async () => {
+    const s = await server()
+    const admin = await s.login()
+    await s.rpc('users.create', STAFF, { cookie: admin })
+    const matched = await s.rpc('passwordReset.request', { username: STAFF.username })
+    const unmatched = await s.rpc('passwordReset.request', { username: 'nobody-by-this-name' })
+    expect(matched.status).toBe(200)
+    expect(unmatched.status).toBe(200)
+    expect(matched.body).toEqual(unmatched.body)
+  })
+
+  it('queues exactly one pending request per user even after repeated submissions, visible only to an admin', async () => {
+    const s = await server()
+    const admin = await s.login()
+    await s.rpc('users.create', STAFF, { cookie: admin })
+    await s.rpc('passwordReset.request', { username: STAFF.username, message: 'Locked out of my laptop' })
+    await s.rpc('passwordReset.request', { username: STAFF.username.toUpperCase() })
+
+    const auditor = await s.login(STAFF.username, STAFF.password)
+    expect((await s.rpc('passwordReset.list', null, { cookie: auditor })).status).toBe(403)
+
+    const list = await s.rpc<Array<{ username: string; message: string | null; status: string }>>('passwordReset.list', null, { cookie: admin })
+    expect(list.status).toBe(200)
+    const mine = list.body.ok ? list.body.data.filter((r) => r.username === STAFF.username) : []
+    expect(mine).toHaveLength(1)
+    expect(mine[0]).toMatchObject({ status: 'pending', message: 'Locked out of my laptop' })
+  })
+
+  it('an admin reset auto-resolves the pending request; dismissing is a separate, one-time action', async () => {
+    const s = await server()
+    const admin = await s.login()
+    const created = await s.rpc<{ id: string }>('users.create', STAFF, { cookie: admin })
+    const staffId = created.body.ok ? created.body.data.id : ''
+    await s.rpc('passwordReset.request', { username: STAFF.username })
+
+    await s.rpc('users.resetPassword', { id: staffId, newPassword: 'Temporary-Pass-2' }, { cookie: admin })
+    const afterReset = await s.rpc<Array<{ username: string; status: string }>>('passwordReset.list', null, { cookie: admin })
+    const row = afterReset.body.ok ? afterReset.body.data.find((r) => r.username === STAFF.username) : undefined
+    expect(row?.status).toBe('resolved')
+
+    await s.rpc('passwordReset.request', { username: STAFF.username })
+    const pending = await s.rpc<Array<{ id: string; username: string; status: string }>>('passwordReset.list', null, { cookie: admin })
+    const second = pending.body.ok ? pending.body.data.find((r) => r.username === STAFF.username && r.status === 'pending') : undefined
+    expect(second).toBeTruthy()
+
+    expect((await s.rpc('passwordReset.dismiss', { id: second!.id }, { cookie: admin })).status).toBe(200)
+    expect((await s.rpc('passwordReset.dismiss', { id: second!.id }, { cookie: admin })).status).toBe(409)
+  })
+
+  it('audits the request and never records a secret', async () => {
+    const s = await server()
+    const admin = await s.login()
+    await s.rpc('users.create', STAFF, { cookie: admin })
+    await s.rpc('passwordReset.request', { username: STAFF.username })
+    const rows = await s.tdb.db.many<{ event_type: string }>("SELECT event_type FROM audit_events WHERE event_type = 'auth.password_reset_requested'")
+    expect(rows).toHaveLength(1)
+  })
+})

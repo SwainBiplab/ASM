@@ -102,6 +102,17 @@ export const resetPasswordInputSchema = z.strictObject({
 })
 export type ResetPasswordInput = z.infer<typeof resetPasswordInputSchema>
 
+export const passwordResetRequestInputSchema = z.strictObject({
+  username: z.string().trim().min(1, 'Required').max(64),
+  message: z.string().trim().max(500).optional()
+})
+export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestInputSchema>
+
+export const passwordResetDismissInputSchema = z.strictObject({
+  id: uuidSchema
+})
+export type PasswordResetDismissInput = z.infer<typeof passwordResetDismissInputSchema>
+
 export const updateRolePermissionsInputSchema = z.strictObject({
   roleKey: roleKeySchema,
   permissions: z.array(z.enum(ALL_PERMISSION_KEYS as [string, ...string[]])).max(200),

@@ -20,6 +20,13 @@ export const W1_COMMANDS = [
   'dashboard.getSummary'
 ] as const satisfies readonly CommandName[]
 
+/** Self-service "forgot password" request queue (U2, web only; no prototype equivalent). */
+export const W1_WEB_COMMANDS = [
+  'passwordReset.request',
+  'passwordReset.list',
+  'passwordReset.dismiss'
+] as const satisfies readonly CommandName[]
+
 /** W2 organization, employee, catalogue, asset and document commands. */
 export const W2_COMMANDS = [
   'departments.list', 'departments.create', 'departments.update', 'departments.setActive',
@@ -68,8 +75,9 @@ export const W7_COMMANDS = [
   'reports.assetValuation', 'reports.maintenanceCost', 'reports.procurementSummary', 'reports.warranty', 'reports.disposals'
 ] as const satisfies readonly CommandName[]
 
-export const SERVER_COMMANDS = [...W1_COMMANDS, ...W2_COMMANDS, ...W4_COMMANDS, ...W5_COMMANDS, ...W6_COMMANDS, ...W7_COMMANDS] as const
+export const SERVER_COMMANDS = [...W1_COMMANDS, ...W1_WEB_COMMANDS, ...W2_COMMANDS, ...W4_COMMANDS, ...W5_COMMANDS, ...W6_COMMANDS, ...W7_COMMANDS] as const
 export type ServerCommandName = (typeof SERVER_COMMANDS)[number]
+export type W1WebCommandName = (typeof W1_WEB_COMMANDS)[number]
 export type W2CommandName = (typeof W2_COMMANDS)[number]
 export type W4CommandName = (typeof W4_COMMANDS)[number]
 export type W5CommandName = (typeof W5_COMMANDS)[number]
@@ -79,6 +87,6 @@ export type W7CommandName = (typeof W7_COMMANDS)[number]
 // Compile-time check that W2_COMMANDS + W4_COMMANDS + W5_COMMANDS + W6_COMMANDS + W7_COMMANDS together cover every web-only command (api.ts).
 // W2 contributes here too: most of it is shared with the frozen prototype, but a few commands (the
 // asset importer) are web-only additions with no prototype equivalent, same as any W4+ command.
-type MissingWebOnlyCommands = Exclude<(typeof WEB_ONLY_COMMAND_NAMES)[number], W2CommandName | W4CommandName | W5CommandName | W6CommandName | W7CommandName>
+type MissingWebOnlyCommands = Exclude<(typeof WEB_ONLY_COMMAND_NAMES)[number], W1WebCommandName | W2CommandName | W4CommandName | W5CommandName | W6CommandName | W7CommandName>
 const _webOnlyExhaustive: MissingWebOnlyCommands extends never ? true : never = true
 void _webOnlyExhaustive

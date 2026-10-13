@@ -3,12 +3,16 @@ import type { SessionInfo } from '@shared/api'
 import { call } from '../../api'
 import { Alert, Button, ErrorAlert, TextField } from '../../components/ui'
 import { AuthLayout } from './AuthLayout'
+import { ForgotPasswordScreen } from './ForgotPasswordScreen'
 
 export function LoginScreen({ notice, onSignedIn }: { notice?: string; onSignedIn: (s: SessionInfo) => void }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<unknown>(null)
   const [busy, setBusy] = useState(false)
+  const [forgotPassword, setForgotPassword] = useState(false)
+
+  if (forgotPassword) return <ForgotPasswordScreen onBack={() => setForgotPassword(false)} />
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -35,7 +39,8 @@ export function LoginScreen({ notice, onSignedIn }: { notice?: string; onSignedI
           <TextField label="Username" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoComplete="username" />
           <TextField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
         </div>
-        <div className="form-actions">
+        <div className="form-actions form-actions--split">
+          <Button variant="quiet" onClick={() => setForgotPassword(true)}>Forgot your password?</Button>
           <Button type="submit" variant="primary" disabled={busy || !username || !password}>
             {busy ? 'Signing in…' : 'Sign in'}
           </Button>
