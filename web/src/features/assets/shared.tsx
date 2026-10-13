@@ -3,6 +3,7 @@ import type { AssetLabel, WarrantyState } from '@shared/api'
 import { CONDITION_LABELS, LIFECYCLE_LABELS, OPERATIONAL_LABELS, type AssetCondition, type LifecycleStatus, type OperationalStatus } from '@shared/assets'
 import { call } from '../../api'
 import { Button, ErrorAlert } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 
 export function LifecycleBadge({ status }: { status: LifecycleStatus }) {
   const cls = status === 'active' ? 'badge--ok' : status === 'retired' ? 'badge--warn' : 'badge--off'
@@ -33,8 +34,10 @@ export function WarrantyNote({ end, state }: { end: string | null; state: Warran
 export function LabelSheet({ assetIds, onClose }: { assetIds: string[]; onClose: () => void }) {
   const [labels, setLabels] = useState<AssetLabel[] | null>(null)
   const [error, setError] = useState<unknown>(null)
+  const guard = useLatestOnly()
   useEffect(() => {
-    call('assets.generateLabels', { assetIds }).then(setLabels, setError)
+    guard(call('assets.generateLabels', { assetIds })).then(setLabels, setError)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetIds])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()

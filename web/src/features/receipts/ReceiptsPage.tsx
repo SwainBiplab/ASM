@@ -4,6 +4,7 @@ import type { UnitDisposition } from '@shared/procurement'
 import { UNIT_DISPOSITION_LABELS } from '@shared/procurement'
 import { ApiError, call, formatDateTime } from '../../api'
 import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 import { DiscrepancyBadge, useCategories } from '../procurement/shared'
 import { LocationPicker } from './LocationPicker'
 
@@ -16,9 +17,10 @@ export function ReceiptsPage({ session, selectedId, navigate }: { session: Sessi
   const [error, setError] = useState<unknown>(null)
   const [creating, setCreating] = useState(false)
 
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('receipts.list', { page, pageSize: PAGE_SIZE }).then(setData, setError)
+    guard(call('receipts.list', { page, pageSize: PAGE_SIZE })).then(setData, setError)
   }, [page])
   useEffect(load, [load])
 
@@ -166,9 +168,10 @@ function ReceiptDetail({ receiptId, session, onBack }: { receiptId: string; sess
   const [error, setError] = useState<unknown>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [resolving, setResolving] = useState<string | null>(null)
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('receipts.get', { receiptId }).then(setR, setError)
+    guard(call('receipts.get', { receiptId })).then(setR, setError)
   }, [receiptId])
   useEffect(load, [load])
   if (!r) return <div className="stack"><ErrorAlert error={error} onRetry={load} />{!error ? <p className="faint" role="status">Loading receipt…</p> : null}</div>

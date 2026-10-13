@@ -4,6 +4,7 @@ import type { AssetCustody, SessionInfo } from '@shared/api'
 import { CONDITION_LABELS } from '@shared/assets'
 import { call, formatDateTime } from '../../api'
 import { Alert, Button, ErrorAlert } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 import { InspectDialog, IssueDialog, ReportLostDialog, ReturnDialog, TransferDialog } from './dialogs'
 import { AckBadge, AssignmentStatusBadge, HandoverReceipt } from './shared'
 import { CreateTicketDialog } from '../maintenance/MaintenancePage'
@@ -21,10 +22,11 @@ export function CustodyPanel({ assetId, assetCode, categoryName, assetLabel, ses
   const [faultPrompt, setFaultPrompt] = useState(false)
   const [reportingFault, setReportingFault] = useState(false)
   const canView = has('allocations.view')
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     if (!canView) return
     setError(null)
-    call('allocations.custody', { assetId }).then(setC, setError)
+    guard(call('allocations.custody', { assetId })).then(setC, setError)
   }, [assetId, canView])
   useEffect(load, [load])
   if (!canView) return null

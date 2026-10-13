@@ -4,6 +4,7 @@ import type { OrderItemInput } from '@shared/procurementSchemas'
 import { formatMinor } from '@shared/assets'
 import { ApiError, call, formatDateTime } from '../../api'
 import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 import { OrderStatusBadge, useCategories, useSuppliers } from '../procurement/shared'
 
 const PAGE_SIZE = 50
@@ -16,9 +17,10 @@ export function OrdersPage({ session, selectedId, navigate }: { session: Session
   const [error, setError] = useState<unknown>(null)
   const [creating, setCreating] = useState(false)
 
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('orders.list', { status, page, pageSize: PAGE_SIZE }).then(setData, setError)
+    guard(call('orders.list', { status, page, pageSize: PAGE_SIZE })).then(setData, setError)
   }, [status, page])
   useEffect(load, [load])
 
@@ -129,9 +131,10 @@ function OrderDetail({ poId, session, onBack }: { poId: string; session: Session
   const [notice, setNotice] = useState<string | null>(null)
   const [amending, setAmending] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('orders.get', { poId }).then(setO, setError)
+    guard(call('orders.get', { poId })).then(setO, setError)
   }, [poId])
   useEffect(load, [load])
   if (!o) return <div className="stack"><ErrorAlert error={error} onRetry={load} />{!error ? <p className="faint" role="status">Loading order…</p> : null}</div>

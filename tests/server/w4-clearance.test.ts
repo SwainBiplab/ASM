@@ -124,3 +124,31 @@ describe('exit clearance', () => {
     expect(await a.call('exitClearance.flagItem', { itemId: x.items[0]!.id, resolution: 'missing', reason: 'x' })).toMatchObject({ ok: false, error: { code: 'PERMISSION_DENIED' } })
   })
 })
+
+describe('exit clearance custody scope (W-16): sweeps department/team/pool equipment the leaver manages', () => {
+  it('includes assets held by a department they manage, a team they lead, and a pool under either', async () => {
+    const a = await session()
+    const f = await w4Setup(a, 4)
+    const manager = await a.ok('employees.create', { employeeCode: 'MGR1', fullName: 'Priya Manager', email: null, phone: null, jobTitle: null, departmentId: null, teamId: null, managerEmployeeId: null, workLocationId: null, employmentStatus: 'active', joiningDate: null, expectedExitDate: null, notes: null })
+    await a.ok('departments.update', { id: f.dept.id, code: f.dept.code, name: f.dept.name, managerEmployeeId: manager.id, notes: null })
+    const team = await a.ok('teams.create', { departmentId: f.dept.id, kind: 'team', code: null, name: 'Voice Support', leadEmployeeId: manager.id, notes: null })
+    const pool = await a.ok('pools.create', { code: null, name: 'Team spares', purpose: null, responsibleDepartmentId: null, responsibleTeamId: team.id, defaultLocationId: null })
+    // An unrelated department/pool, managed by nobody-in-particular, as a control.
+    const otherDept = await a.ok('departments.create', { code: 'SALES', name: 'Sales', managerEmployeeId: null, notes: null })
+    const otherPool = await a.ok('pools.create', { code: null, name: 'Sales spares', purpose: null, responsibleDepartmentId: otherDept.id, responsibleTeamId: null, defaultLocationId: null })
+
+    await a.ok('allocations.issue', issue([f.assets[0]!.id], { type: 'department', id: f.dept.id }))
+    await a.ok('allocations.issue', issue([f.assets[1]!.id], { type: 'team', id: team.id }))
+    await a.ok('allocations.issue', issue([f.assets[2]!.id], { type: 'pool', id: pool.id }))
+    // A control: an asset held by an unrelated pool must NOT be swept in.
+    await a.ok('allocations.issue', issue([f.assets[3]!.id], { type: 'pool', id: otherPool.id }))
+
+    const summaryBefore = await a.ok('dashboard.getSummary')
+    expect(summaryBefore.allocations).toMatchObject({ active: 4 })
+
+    const x = await a.ok('exitClearance.open', { employeeId: manager.id, exitDate: '2026-12-31', ownerUserId: null, notes: null })
+    expect(x.itemCount).toBe(3)
+    expect(x.items.map((i) => i.assetId).sort()).toEqual([f.assets[0]!.id, f.assets[1]!.id, f.assets[2]!.id].sort())
+    expect(x.items.some((i) => i.assetId === f.assets[3]!.id)).toBe(false)
+  })
+})

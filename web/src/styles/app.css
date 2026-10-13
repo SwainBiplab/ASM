@@ -3,7 +3,7 @@
 :root {
   --ink: #1d2633;
   --ink-soft: #46525f;
-  --ink-faint: #64707e;
+  --ink-faint: #555f6a;
   --paper: #e6ebf1;
   --surface: #e9eef4;
   --surface-sunk: #dde3ea;
@@ -206,7 +206,7 @@ p { margin: 0; }
 .rail__brand { padding: 18px 18px 14px; }
 .rail__org { font-size: 12px; color: #8b97a6; margin-top: 8px; }
 .rail__group { padding: 10px 0 4px; }
-.rail__group-title { padding: 0 18px 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #7b879a; }
+.rail__group-title { padding: 0 18px 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #8793a7; }
 .rail__link {
   position: relative; display: flex; align-items: center; justify-content: space-between;
   margin: 2px 10px; padding: 8px 12px; border-radius: var(--radius-control);
@@ -219,7 +219,7 @@ p { margin: 0; }
   background: var(--tag); border-radius: 0 2px 2px 0;
 }
 .rail__pending { font-size: 11px; color: #6f7b8b; }
-.rail__foot { margin-top: auto; padding: 14px 18px; font-size: 12px; color: #6f7b8b; }
+.rail__foot { margin-top: auto; padding: 14px 18px; font-size: 12px; color: #8793a7; }
 
 .workspace { display: flex; flex-direction: column; min-width: 0; height: 100%; }
 .topbar {

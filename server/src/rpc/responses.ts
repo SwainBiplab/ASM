@@ -103,6 +103,7 @@ export const dashboardOutput: z.ZodType<DashboardSummary> = z.object({
   auditEventsLast7Days: z.number().int(),
   schemaVersion: z.number().int(),
   assets: nullable(assetMetricsOutput),
+  allocations: z.object({ active: z.number().int(), overdueReturns: z.number().int() }).nullable().optional(),
   exitClearances: z.object({ open: z.number().int(), withUnresolvedItems: z.number().int() }).nullable().optional(),
   maintenance: z.object({ open: z.number().int(), overdue: z.number().int() }).nullable().optional(),
   audits: z.object({ open: z.number().int(), withUnresolvedItems: z.number().int() }).nullable().optional(),

@@ -36,6 +36,7 @@ import { buildW6Commands } from './commandsW6'
 import { buildW7Commands } from './commandsW7'
 import type { DocumentStorage } from '../storage/storage'
 import { getAssetMetrics } from '../services/assets'
+import { allocationsMetrics } from '../services/allocations'
 import { auditMetrics } from '../services/audits'
 import { clearanceMetrics } from '../services/clearances'
 import { maintenanceMetrics } from '../services/maintenance'
@@ -145,6 +146,7 @@ export function buildCommands(config: ServerConfig, storage: DocumentStorage): S
           lastBackup: null,
           schemaVersion: await schemaVersion(db),
           assets: await getAssetMetrics(db, op(ctx)),
+          allocations: await allocationsMetrics(db, op(ctx)),
           exitClearances: await clearanceMetrics(db, op(ctx)),
           maintenance: await maintenanceMetrics(db, op(ctx)),
           audits: await auditMetrics(db, op(ctx)),

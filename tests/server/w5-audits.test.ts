@@ -5,7 +5,7 @@ import { newCorrelationId } from '../../server/src/core'
 import { bootstrapOrganization } from '../../server/src/services/identity'
 import { SETUP } from './api-helpers'
 import { createApiSession, type ApiSession } from './session-helpers'
-import { count, rpcWithKey, w4Setup } from './w4-helpers'
+import { count, issue, rpcWithKey, w4Setup } from './w4-helpers'
 
 const sessions: ApiSession[] = []
 afterEach(async () => {
@@ -255,5 +255,24 @@ describe('permissions and organization isolation', () => {
     const [foreignAsset] = await a.sql<{ id: string }>("INSERT INTO assets (id, organization_id, asset_code, category_id) VALUES (gen_random_uuid(), $1, 'AST-000001', $2) RETURNING id", [o, cat!.id])
     expect(await a.call('audits.create', byAssets([foreignAsset!.id]))).toMatchObject({ ok: false, error: { code: 'VALIDATION_ERROR' } })
     expect((await a.ok('audits.list', { status: 'all' })).total).toBe(1)
+  })
+})
+
+describe('audit custodian scope (W-22): sweeps department/team equipment the custodian manages', () => {
+  it('matches direct assignments plus anything held by a department they manage or a team they lead', async () => {
+    const a = await session()
+    const f = await w4Setup(a, 3)
+    const manager = await a.ok('employees.create', { employeeCode: 'MGR2', fullName: 'Arjun Manager', email: null, phone: null, jobTitle: null, departmentId: null, teamId: null, managerEmployeeId: null, workLocationId: null, employmentStatus: 'active', joiningDate: null, expectedExitDate: null, notes: null })
+    await a.ok('departments.update', { id: f.dept.id, code: f.dept.code, name: f.dept.name, managerEmployeeId: manager.id, notes: null })
+    const team = await a.ok('teams.create', { departmentId: f.dept.id, kind: 'team', code: null, name: 'Backoffice', leadEmployeeId: manager.id, notes: null })
+
+    await a.ok('allocations.issue', issue([f.assets[0]!.id], { type: 'employee', id: manager.id }))
+    await a.ok('allocations.issue', issue([f.assets[1]!.id], { type: 'department', id: f.dept.id }))
+    await a.ok('allocations.issue', issue([f.assets[2]!.id], { type: 'team', id: team.id }))
+
+    const x = await a.ok('audits.create', { title: 'Manager custody check', scope: { locationId: null, categoryId: null, custodianEmployeeId: manager.id, assetIds: null }, responsibleUserId: null, notes: null })
+    expect(x.itemCount).toBe(3)
+    const items = await a.ok('audits.getItems', { auditId: x.id, status: 'all', page: 1, pageSize: 50 })
+    expect(items.items.map((i) => i.assetId).sort()).toEqual([f.assets[0]!.id, f.assets[1]!.id, f.assets[2]!.id].sort())
   })
 })

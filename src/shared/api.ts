@@ -278,6 +278,8 @@ export interface DashboardSummary {
   schemaVersion: number
   /** Null when the user cannot view assets. */
   assets: AssetMetrics | null
+  /** W4 (web only): null when the user cannot view allocations (W-18: overdue returns). */
+  allocations?: { active: number; overdueReturns: number } | null
   /** W4 (web only): null when the user cannot view exit clearances. */
   exitClearances?: { open: number; withUnresolvedItems: number } | null
   /** W5 (web only): null when the user cannot view maintenance tickets. */

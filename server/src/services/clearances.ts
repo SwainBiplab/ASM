@@ -19,7 +19,7 @@ import type { ClearanceDetail, ClearanceItemView, ClearanceSummary, Page } from 
 import { AppError, assertPermission, newId, type OpContext } from '../core'
 import type { Db, SqlClient } from '../db/sql'
 import type { DocumentStorage } from '../storage/storage'
-import { nextNumber, reportLostInTx, returnInTx } from './allocations'
+import { custodyAssignmentsForEmployee, nextNumber, reportLostInTx, returnInTx } from './allocations'
 import { conflict, invalid, likePattern, Params, requireRow } from './common'
 import { listDocumentLinks } from './documents'
 import { auditFrom, recordAudit } from './foundation'
@@ -110,10 +110,9 @@ export async function openClearance(db: Db, storage: DocumentStorage, raw: OpenC
       'INSERT INTO exit_clearances (id, organization_id, clearance_number, employee_id, exit_date, owner_user_id, notes, opened_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
       [id, org, number, input.employeeId, input.exitDate, owner, input.notes, ctx.actor.userId]
     )
-    const outstanding = await t.many<{ id: string; assetId: string }>(
-      "SELECT id, asset_id AS \"assetId\" FROM asset_assignments WHERE organization_id = $1 AND employee_id = $2 AND status = 'active' ORDER BY assigned_at FOR UPDATE",
-      [org, input.employeeId]
-    )
+    // W-16: sweeps direct assignments plus anything held by a department/team/pool this employee
+    // manages or leads -- not just what was personally assigned to them.
+    const outstanding = await custodyAssignmentsForEmployee(t, org, input.employeeId, true)
     for (const s of outstanding) {
       await t.exec('INSERT INTO exit_clearance_items (id, organization_id, clearance_id, asset_id, assignment_id) VALUES ($1, $2, $3, $4, $5)', [newId(), org, id, s.assetId, s.id])
     }

@@ -1,7 +1,13 @@
 # Local/staging stack only -- NOT a production topology (TAS §21: managed PostgreSQL and
 # managed object storage are required in production; see DECISIONS.md D47). This compose file
-# lets the portable app image, a real PostgreSQL, and an S3-compatible object store (MinIO) be
-# exercised together before a cloud provider is chosen.
+# lets the portable app image, a real PostgreSQL, and an S3-compatible object store be exercised
+# together before a cloud provider is chosen.
+#
+# Object store: MinIO pulled its images from public Docker Hub/Quay behind a login wall in its
+# 2025 licensing change (`minio/minio`, `minio/mc`, and the Quay mirrors all now return "pull
+# access denied" with no account). Adobe's S3Mock is used instead -- a real, actively maintained
+# S3-API-compatible server, freely pullable, though in-memory (data does not survive a restart),
+# which is fine for exercising the stack but not a staging-grade substitute for MinIO.
 services:
   postgres:
     image: postgres:18
@@ -10,61 +16,62 @@ services:
       POSTGRES_PASSWORD: bpoam_dev_only
       POSTGRES_DB: bpoam
     ports: ["5432:5432"]
-    volumes: ["pg_data:/var/lib/postgresql/data"]
+    # postgres:18+ images store data under a major-version-specific subdirectory and refuse to
+    # start if the volume is mounted at the old `.../data` path (docker-library/postgres#1259) --
+    # mount the parent directory instead, per the image's own guidance.
+    volumes: ["pg_data:/var/lib/postgresql"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bpoam"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
+  s3mock:
+    image: adobe/s3mock:latest
     environment:
-      MINIO_ROOT_USER: bpoam-minio
-      MINIO_ROOT_PASSWORD: bpoam_dev_only
-    ports: ["9000:9000", "9001:9001"]
-    volumes: ["minio_data:/data"]
+      initialBuckets: bpoam-documents
+    ports: ["9000:9090"]
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/"]
       interval: 5s
       timeout: 5s
       retries: 10
-
-  # One-shot: creates the documents bucket in MinIO (idempotent).
-  minio-init:
-    image: minio/mc:latest
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set local http://minio:9000 bpoam-minio bpoam_dev_only &&
-      mc mb -p local/bpoam-documents"
 
   app:
     build: .
     depends_on:
       postgres:
         condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
+      s3mock:
+        condition: service_healthy
     environment:
       APP_ENV: development
       HOST: 0.0.0.0
       PORT: "3000"
       DATABASE_URL: postgres://bpoam:bpoam_dev_only@postgres:5432/bpoam
-      PUBLIC_ORIGIN: http://127.0.0.1:3000
+      PUBLIC_ORIGIN: http://localhost:3000
       STORAGE_DRIVER: s3
       STORAGE_S3_BUCKET: bpoam-documents
       STORAGE_S3_REGION: us-east-1
-      STORAGE_S3_ENDPOINT: http://minio:9000
-      STORAGE_S3_ACCESS_KEY_ID: bpoam-minio
+      STORAGE_S3_ENDPOINT: http://s3mock:9090
+      STORAGE_S3_ACCESS_KEY_ID: bpoam-s3mock
       STORAGE_S3_SECRET_ACCESS_KEY: bpoam_dev_only
       STORAGE_S3_FORCE_PATH_STYLE: "true"
       MIGRATE_ON_START: "true"
     ports: ["3000:3000"]
 
+  # TLS-terminating reverse proxy in front of the app (item 6: exercise the stack behind a real TLS
+  # proxy, not just the bare app port). Caddy issues a locally-trusted cert via its internal CA since
+  # there is no public domain here; a production deploy would swap in a real CA-signed cert but keep
+  # the same reverse-proxy topology.
+  proxy:
+    image: caddy:2
+    depends_on: [app]
+    ports: ["443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+
 volumes:
   pg_data:
-  minio_data:
+  caddy_data:

@@ -3,6 +3,7 @@ import type { AssignmentView, EmployeeDetail, EmployeeListItem, Page, SessionInf
 import { EDITABLE_EMPLOYMENT_STATUSES, EMPLOYMENT_STATUS_LABELS, EMPLOYMENT_STATUSES, type EmploymentStatus } from '@shared/organization'
 import { ApiError, call, formatDateTime } from '../../api'
 import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 import { EmployeePicker, optionList, useOrgLookups, type OrgLookups } from '../organization/lookups'
 import { EmployeeImport } from './EmployeeImport'
 
@@ -29,8 +30,9 @@ export function EmployeesPage({ session }: { session: SessionInfo }) {
   const [editing, setEditing] = useState<EmployeeDetail | 'new' | null>(null)
   const [exiting, setExiting] = useState<EmployeeDetail | null>(null)
 
+  const guard = useLatestOnly()
   const load = useCallback(() => {
-    call('employees.search', { page, pageSize: PAGE_SIZE, status, ...(query.trim() ? { query: query.trim() } : {}), ...(departmentId ? { departmentId } : {}) }).then(setData, setError)
+    guard(call('employees.search', { page, pageSize: PAGE_SIZE, status, ...(query.trim() ? { query: query.trim() } : {}), ...(departmentId ? { departmentId } : {}) })).then(setData, setError)
   }, [page, status, query, departmentId])
   useEffect(load, [load])
 

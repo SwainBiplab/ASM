@@ -5,6 +5,7 @@ import type { AssetListItem, MaintenanceTicketDetail, MaintenanceTicketSummary, 
 import { formatMinor, minorToInput } from '@shared/assets'
 import { ApiError, apiUrl, call, downloadFile, formatDateTime, uploadFile } from '../../api'
 import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 import { AssetScanField, PriorityBadge, TicketStatusBadge, categoryOptions, priorityOptions, useTechnicians } from './shared'
 
 const PAGE_SIZE = 50
@@ -20,9 +21,10 @@ export function MaintenancePage({ session, selectedId, navigate }: { session: Se
   const [error, setError] = useState<unknown>(null)
   const [creating, setCreating] = useState(false)
 
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('maintenance.list', { status, query: query.trim() || undefined, overdueOnly, page, pageSize: PAGE_SIZE }).then(setData, setError)
+    guard(call('maintenance.list', { status, query: query.trim() || undefined, overdueOnly, page, pageSize: PAGE_SIZE })).then(setData, setError)
   }, [status, query, overdueOnly, page])
   useEffect(() => {
     const t = window.setTimeout(load, 200)
@@ -141,9 +143,10 @@ function TicketDetail({ ticketId, session, onBack }: { ticketId: string; session
   const [t, setT] = useState<MaintenanceTicketDetail | null>(null)
   const [error, setError] = useState<unknown>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('maintenance.get', { ticketId }).then(setT, setError)
+    guard(call('maintenance.get', { ticketId })).then(setT, setError)
   }, [ticketId])
   useEffect(load, [load])
   if (!t) return <div className="stack"><ErrorAlert error={error} onRetry={load} />{!error ? <p className="faint" role="status">Loading ticket…</p> : null}</div>

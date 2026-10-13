@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { AuditEventView, Page } from '@shared/api'
 import { call, formatDateTime } from '../../api'
 import { Button, ErrorAlert, PageHeader, Panel, TextField } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 
 const PAGE_SIZE = 50
 
@@ -11,9 +12,11 @@ export function AuditLogPage() {
   const [eventType, setEventType] = useState('')
   const [data, setData] = useState<Page<AuditEventView> | null>(null)
   const [error, setError] = useState<unknown>(null)
+  const guard = useLatestOnly()
 
   useEffect(() => {
-    call('audit.list', { page, pageSize: PAGE_SIZE, ...(eventType.trim() ? { eventType: eventType.trim() } : {}) }).then(setData, setError)
+    guard(call('audit.list', { page, pageSize: PAGE_SIZE, ...(eventType.trim() ? { eventType: eventType.trim() } : {}) })).then(setData, setError)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, eventType])
 
   const pages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1

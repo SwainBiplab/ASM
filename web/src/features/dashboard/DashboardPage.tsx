@@ -3,6 +3,7 @@ import type { AssignmentView, CategoryView, DashboardSummary, MaintenanceTicketS
 import { formatMinor } from '@shared/assets'
 import { call } from '../../api'
 import { ErrorAlert, PageHeader } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 
 interface DonutSegment {
   key: string
@@ -32,15 +33,18 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null)
   const [nowTick, setNowTick] = useState(() => Date.now())
 
+  const guard = useLatestOnly()
   const load = () => {
     setError(null)
     setLoading(true)
-    Promise.allSettled([
-      call('dashboard.getSummary'),
-      call('categories.list', { includeInactive: false }),
-      call('maintenance.list', { page: 1, pageSize: 4 }),
-      call('allocations.list', { page: 1, pageSize: 4 })
-    ])
+    guard(
+      Promise.allSettled([
+        call('dashboard.getSummary'),
+        call('categories.list', { includeInactive: false }),
+        call('maintenance.list', { page: 1, pageSize: 4 }),
+        call('allocations.list', { page: 1, pageSize: 4 })
+      ])
+    )
       .then(([sumRes, catRes, maintRes, allocRes]) => {
         if (sumRes.status === 'fulfilled') setSummary(sumRes.value)
         else setError(sumRes.reason)
@@ -151,6 +155,9 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
     if (summary?.maintenance && summary.maintenance.overdue > 0) {
       list.push({ key: 'maint-overdue', label: 'Overdue maintenance tickets', value: String(summary.maintenance.overdue), tone: 'bad', onClick: () => navigate('maintenance') })
     }
+    if (summary?.allocations && summary.allocations.overdueReturns > 0) {
+      list.push({ key: 'allocations-overdue', label: 'Overdue equipment returns', value: String(summary.allocations.overdueReturns), tone: 'bad', onClick: () => navigate('allocations') })
+    }
     if (summary?.maintenance && summary.maintenance.open > 0) {
       list.push({ key: 'maint-open', label: 'Open maintenance tickets', value: String(summary.maintenance.open), tone: 'neutral', onClick: () => navigate('maintenance') })
     }
@@ -231,7 +238,7 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
             </div>
             <div className="dash-kpi-card__value ledger__value">{totalAssets}</div>
             <div className="dash-kpi-card__sub">
-              <span className="dash-kpi-card__badge" style={{ background: 'rgba(37,99,235,0.12)', color: '#2563eb' }}>
+              <span className="dash-kpi-card__badge" style={{ background: 'rgba(37,99,235,0.12)', color: 'var(--action)' }}>
                 ✓ Active Register
               </span>
               <span>{categories.length} categor{categories.length === 1 ? 'y' : 'ies'} tracked</span>
@@ -251,7 +258,7 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
           </div>
           <div className="dash-kpi-card__value">{available}</div>
           <div className="dash-kpi-card__sub">
-            <span className="dash-kpi-card__badge" style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981' }}>
+            <span className="dash-kpi-card__badge" style={{ background: 'rgba(16,185,129,0.12)', color: 'var(--success)' }}>
               {100 - deploymentRate}% ready
             </span>
             <span>Unassigned inventory</span>
@@ -270,7 +277,7 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
           </div>
           <div className="dash-kpi-card__value">{assigned}</div>
           <div className="dash-kpi-card__sub">
-            <span className="dash-kpi-card__badge" style={{ background: 'rgba(139,92,246,0.12)', color: '#8b5cf6' }}>
+            <span className="dash-kpi-card__badge" style={{ background: 'rgba(139,92,246,0.12)', color: '#5b3fab' }}>
               {deploymentRate}% deployed
             </span>
             <span>To staff & desks</span>
@@ -290,11 +297,11 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
           <div className="dash-kpi-card__value">{readyRate}%</div>
           <div className="dash-kpi-card__sub">
             {underMaintenance > 0 ? (
-              <span className="dash-kpi-card__badge" style={{ background: 'rgba(245,158,11,0.15)', color: '#d97706' }}>
+              <span className="dash-kpi-card__badge" style={{ background: 'rgba(245,158,11,0.15)', color: '#7a4700' }}>
                 {underMaintenance} under repair
               </span>
             ) : (
-              <span className="dash-kpi-card__badge" style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981' }}>
+              <span className="dash-kpi-card__badge" style={{ background: 'rgba(16,185,129,0.12)', color: 'var(--success)' }}>
                 All systems functional
               </span>
             )}
@@ -484,10 +491,10 @@ export function DashboardPage({ navigate }: { session: SessionInfo; navigate: (i
           <div className="dash-panel__body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div className="domain-split-box">
               <div className="domain-split-labels">
-                <span style={{ color: '#2563eb', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ color: 'var(--action)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   💻 IT Hardware: <strong>{itAssetCount} assets</strong> ({itPercentage}%)
                 </span>
-                <span style={{ color: '#d97706', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ color: '#7a4700', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   🏢 Facilities: <strong>{facAssetCount} assets</strong> ({facPercentage}%)
                 </span>
               </div>

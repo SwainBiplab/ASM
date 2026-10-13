@@ -19,7 +19,7 @@ The architecture runs as a **Fastify API + React SPA** served same-origin from a
 | **API Server** | Node.js 22, Fastify 5, TypeScript |
 | **Web Frontend** | React 19, Vite 7, Vanilla CSS (neumorphism design) |
 | **Database** | PostgreSQL 18 |
-| **Document Storage** | S3-compatible (MinIO for local/staging, any AWS S3-compatible in production) |
+| **Document Storage** | S3-compatible (Adobe S3Mock for local/staging — see note below, any AWS S3-compatible in production) |
 | **Desktop Agent** | Electron 44, SQLite (offline-first, read + local observations) |
 | **Schema Migrations** | Custom forward-only TypeScript migrator |
 | **Testing** | Vitest (unit + server), Playwright (E2E browser) |
@@ -137,20 +137,32 @@ npm run web:build
 
 ## Running with Docker
 
-The full stack (app + PostgreSQL + MinIO) runs with a single command:
+The full stack (app + PostgreSQL + S3-compatible storage + a TLS-terminating reverse proxy) runs with a single command:
 
 ```bash
-docker compose up --build
+docker compose up -d --build
 ```
 
-| Service | URL |
-|---|---|
-| Web App + API | http://localhost:3000 |
-| MinIO Console (file storage) | http://localhost:9001 |
-| PostgreSQL | localhost:5432 |
+| Service | What it is | URL / address |
+|---|---|---|
+| `app` | Web App + API | http://localhost:3000 |
+| `proxy` | Caddy, TLS-terminating reverse proxy in front of `app` | https://localhost |
+| `postgres` | PostgreSQL 18 | localhost:5432 |
+| `s3mock` | S3-compatible document storage (see note below) | localhost:9000 |
 
-> The app automatically runs migrations on first start (`MIGRATE_ON_START=true`).  
-> After startup, run `docker compose exec app npx tsx --tsconfig tsconfig.server.json server/src/cli/admin.ts bootstrap` to create the first admin account.
+> The app automatically runs migrations on first start (`MIGRATE_ON_START=true`).
+> `server:bootstrap` is interactive (it asks *you* for the first admin's username/password), so it isn't run automatically — after the stack is up, run it yourself in a real terminal:
+> ```bash
+> docker compose exec app npx tsx --tsconfig tsconfig.server.json server/src/cli/admin.ts bootstrap
+> ```
+
+**Pick one entry point and make `PUBLIC_ORIGIN` in `docker-compose.yml` match it exactly** — the server rejects any request whose browser `Origin` header doesn't match `PUBLIC_ORIGIN` byte-for-byte (CSRF protection), so `http://localhost:3000` and `http://127.0.0.1:3000` are treated as different origins even though they're the same machine.
+- **Plain HTTP (default, simplest for local dev):** browse `http://localhost:3000`; `PUBLIC_ORIGIN` is already set to match.
+- **Through the TLS proxy** (exercises the real reverse-proxy path): browse `https://localhost` and change `PUBLIC_ORIGIN` to `https://localhost`. Caddy issues its own locally-trusted certificate (`tls internal` in `Caddyfile`) since there's no public domain in local dev — your browser will warn about it once; click through, or use `curl -k`.
+
+> **Object storage note:** MinIO pulled its Docker Hub and Quay images behind a login wall in its 2025 licensing change, so `docker-compose.yml` uses [Adobe's S3Mock](https://github.com/adobe/S3Mock) instead — a real, actively maintained, freely pullable S3-API-compatible server. It's **in-memory**: uploaded documents do not survive restarting the `s3mock` container. Fine for exercising the stack locally; not a substitute for a real S3-compatible provider in staging or production.
+
+> **PostgreSQL 18 volume layout:** the `postgres` service mounts its volume at `/var/lib/postgresql` (not `.../data`) — the 18+ images store data under a version-specific subdirectory and refuse to start against the older mount convention.
 
 ### Deploy to another machine
 
@@ -161,7 +173,7 @@ docker save bpoam:latest -o bpoam-image.tar
 
 # On the target machine
 docker load -i bpoam-image.tar
-docker compose up   # needs docker-compose.yml alongside the tar
+docker compose up -d   # needs docker-compose.yml and Caddyfile alongside the tar
 ```
 
 ---
@@ -198,7 +210,8 @@ ASM/
 ├── tests/                  # Playwright E2E (web-e2e/) + agent unit tests
 ├── scripts/                # Build scripts, seed, import utilities
 ├── Dockerfile              # Multi-stage: build web → runtime Node image
-└── docker-compose.yml      # Full stack: app + PostgreSQL + MinIO
+├── docker-compose.yml      # Full stack: app + PostgreSQL + S3Mock + Caddy TLS proxy
+└── Caddyfile               # TLS-terminating reverse proxy config for the `proxy` service
 ```
 
 ---
@@ -248,10 +261,10 @@ ASM/
 | `STORAGE_LOCAL_ROOT` | | Local document storage path (when `STORAGE_DRIVER=local`) |
 | `STORAGE_S3_BUCKET` | | S3 bucket name (when `STORAGE_DRIVER=s3`) |
 | `STORAGE_S3_REGION` | | S3 region |
-| `STORAGE_S3_ENDPOINT` | | S3 endpoint URL (for non-AWS providers like MinIO) |
-| `STORAGE_S3_ACCESS_KEY_ID` | | S3 access key |
-| `STORAGE_S3_SECRET_ACCESS_KEY` | | S3 secret key |
-| `STORAGE_S3_FORCE_PATH_STYLE` | | `true` for MinIO and most non-AWS providers |
+| `STORAGE_S3_ENDPOINT` | | S3 endpoint URL (for non-AWS providers, e.g. the `s3mock` service in Docker) |
+| `STORAGE_S3_ACCESS_KEY_ID` | | S3 access key (S3Mock accepts any value) |
+| `STORAGE_S3_SECRET_ACCESS_KEY` | | S3 secret key (S3Mock accepts any value) |
+| `STORAGE_S3_FORCE_PATH_STYLE` | | `true` for S3Mock, MinIO, and most non-AWS providers |
 | `SYNC_UPLOADS_ENABLED` | | `true` to enable offline-agent sync upload endpoints (gated off by default) |
 
 ---

@@ -1,0 +1,9 @@
+# Local TLS-terminating reverse proxy for the docker-compose stack (item 6: "Docker deployment was
+# only syntax-checked, never actually built/run behind a real TLS proxy"). Caddy's `tls internal`
+# issues a locally-trusted cert from an ad-hoc internal CA -- there is no public domain to get a
+# real CA-signed cert for in this environment, but the proxy itself (TLS termination, HTTP->HTTPS
+# redirect, forwarding to the app container) is the same topology a production proxy would use.
+https://localhost {
+	tls internal
+	reverse_proxy app:3000
+}

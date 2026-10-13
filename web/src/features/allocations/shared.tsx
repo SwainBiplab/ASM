@@ -13,6 +13,7 @@ import {
 import type { AssetCustody, HandoverView, SessionInfo } from '@shared/api'
 import { CONDITION_LABELS } from '@shared/assets'
 import { apiUrl, call, downloadFile, formatDateTime, uploadFile } from '../../api'
+import { useLatestOnly } from '../../hooks'
 import { Alert, Button, ErrorAlert, SelectField, TextField } from '../../components/ui'
 import { EmployeePicker, optionList } from '../organization/lookups'
 
@@ -40,6 +41,7 @@ export function AssignmentStatusBadge({ status }: { status: AssignmentStatus }) 
 export function TargetPicker({ value, onChange, error, excludeEmployeeId }: { value: Target; onChange: (t: Target) => void; error?: string | undefined; excludeEmployeeId?: string }) {
   const [type, setType] = useState<AssignmentTargetType>(value?.type ?? 'employee')
   const [options, setOptions] = useState<Array<{ value: string; label: string }>>([])
+  const guardOptions = useLatestOnly()
   useEffect(() => {
     if (type === 'employee') return setOptions([])
     const load =
@@ -50,7 +52,7 @@ export function TargetPicker({ value, onChange, error, excludeEmployeeId }: { va
           : type === 'team'
             ? call('teams.list', {}).then((r) => optionList(r, (t) => `${t.name} (${t.departmentName})`))
             : call('pools.list', {}).then((r) => optionList(r, (p) => p.name))
-    load.then(setOptions, () => setOptions([]))
+    guardOptions(load).then(setOptions, () => setOptions([]))
   }, [type])
   return (
     <>
@@ -158,7 +160,8 @@ export function HandoverReceipt({ handoverId, session, onClose }: { handoverId: 
   const fileInput = useRef<HTMLInputElement>(null)
   const has = (p: string) => session.permissions.includes(p as never)
   const canAcknowledge = has('allocations.issue') || has('allocations.transfer')
-  const load = () => call('allocations.getHandover', { handoverId }).then(setH, setError)
+  const guard = useLatestOnly()
+  const load = () => guard(call('allocations.getHandover', { handoverId })).then(setH, setError)
   useEffect(() => {
     void load()
   }, [handoverId])

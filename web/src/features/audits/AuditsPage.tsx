@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ChangeEvent } from 'react'
 import type { AssetListItem, AuditItemView, CategoryView, Page, PhysicalAuditDetail, PhysicalAuditSummary, SessionInfo } from '@shared/api'
 import { ApiError, apiUrl, call, downloadFile, formatDateTime, uploadFile } from '../../api'
 import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 import { AssetScanField } from '../maintenance/shared'
 import { EmployeePicker, optionList, useOrgLookups } from '../organization/lookups'
 import { conditionOptions } from '../allocations/shared'
@@ -18,9 +19,10 @@ export function AuditsPage({ session, selectedId, navigate }: { session: Session
   const [error, setError] = useState<unknown>(null)
   const [creating, setCreating] = useState(false)
 
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('audits.list', { status, query: query.trim() || undefined, page: 1, pageSize: PAGE_SIZE }).then(setData, setError)
+    guard(call('audits.list', { status, query: query.trim() || undefined, page: 1, pageSize: PAGE_SIZE })).then(setData, setError)
   }, [status, query])
   useEffect(() => {
     const t = window.setTimeout(load, 200)
@@ -140,10 +142,12 @@ function AuditDetailView({ auditId, session, onBack }: { auditId: string; sessio
   const [action, setAction] = useState<ItemAction>(null)
   const [closing, setClosing] = useState<'close' | 'cancel' | null>(null)
 
+  const guardX = useLatestOnly()
+  const guardItems = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('audits.get', { auditId }).then(setX, setError)
-    call('audits.getItems', { auditId, status: itemStatus, page: 1, pageSize: 200 }).then(setItems, setError)
+    guardX(call('audits.get', { auditId })).then(setX, setError)
+    guardItems(call('audits.getItems', { auditId, status: itemStatus, page: 1, pageSize: 200 })).then(setItems, setError)
   }, [auditId, itemStatus])
   useEffect(load, [load])
 

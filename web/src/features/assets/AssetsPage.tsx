@@ -24,6 +24,7 @@ import {
 } from '@shared/assets'
 import { ApiError, apiUrl, call, downloadFile, formatBytes, formatDateTime, uploadFile } from '../../api'
 import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 import { optionList } from '../organization/lookups'
 import { LabelSheet, LifecycleBadge, OperationalBadge, WarrantyNote, conditionLabel } from './shared'
 import { CustodyPanel } from '../allocations/CustodyPanel'
@@ -80,14 +81,16 @@ export function AssetsPage({ session, selectedId, navigate }: { session: Session
     [page, sort, filters]
   )
 
+  const guardSearch = useLatestOnly()
   const load = useCallback(() => {
-    call('assets.search', searchInput).then(setData, setError)
+    guardSearch(call('assets.search', searchInput)).then(setData, setError)
   }, [searchInput])
   useEffect(load, [load])
 
+  const guardDetail = useLatestOnly()
   const loadDetail = useCallback(() => {
     if (!selectedId) return setDetail(null)
-    call('assets.get', { id: selectedId }).then(setDetail, (err) => {
+    guardDetail(call('assets.get', { id: selectedId })).then(setDetail, (err) => {
       setError(err)
       setDetail(null)
     })

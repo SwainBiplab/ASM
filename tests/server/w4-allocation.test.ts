@@ -305,3 +305,24 @@ describe('handover acknowledgment', () => {
     expect(await a.call('allocations.acknowledge', { handoverId: h2.id, acknowledgedByName: 'Again' })).toMatchObject({ ok: false, error: { code: 'STATE_CONFLICT' } })
   })
 })
+
+describe('dashboard overdue-return metric (W-18)', () => {
+  it('counts only active assignments past their expected return date, and is null without allocations.view', async () => {
+    const a = await session()
+    const f = await w4Setup(a, 3)
+    await a.ok('allocations.issue', issue([f.assets[0]!.id], { type: 'employee', id: f.ravi.id }, { expectedReturnDate: '2020-01-01' })) // overdue
+    await a.ok('allocations.issue', issue([f.assets[1]!.id], { type: 'employee', id: f.asha.id }, { expectedReturnDate: '2099-01-01' })) // not yet due
+    await a.ok('allocations.issue', issue([f.assets[2]!.id], { type: 'employee', id: f.ravi.id })) // no expected return date at all
+
+    const summary = await a.ok('dashboard.getSummary')
+    expect(summary.allocations).toEqual({ active: 3, overdueReturns: 1 })
+
+    // Filter list matches the metric: exactly the one overdue assignment.
+    const overdueList = await a.ok('allocations.list', { status: 'all', overdueOnly: true, page: 1, pageSize: 50 })
+    expect(overdueList.items).toHaveLength(1)
+    expect(overdueList.items[0]!.assetId).toBe(f.assets[0]!.id)
+
+    await a.becomeNewUser('noalloc', ['employee'])
+    expect((await a.ok('dashboard.getSummary')).allocations).toBeNull()
+  })
+})

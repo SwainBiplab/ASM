@@ -69,7 +69,22 @@ async function resolveScope(c: SqlClient, ctx: OpContext, scope: AuditScope): Pr
   }
   if (scope.categoryId) where.push(`a.category_id = ${p.add(scope.categoryId)}`)
   if (scope.custodianEmployeeId) {
-    where.push(`a.id IN (SELECT asset_id FROM asset_assignments WHERE organization_id = ${p.add(org)} AND employee_id = ${p.add(scope.custodianEmployeeId)} AND status = 'active')`)
+    // W-22: matches direct assignments plus anything held by a department/team/pool this employee
+    // manages or leads -- the same custody definition exit clearance uses (W-16, allocations.ts).
+    const orgRef = p.add(org)
+    const empRef = p.add(scope.custodianEmployeeId)
+    where.push(
+      `a.id IN (
+         SELECT s.asset_id FROM asset_assignments s
+         LEFT JOIN departments d ON d.id = s.department_id
+         LEFT JOIN teams tm ON tm.id = s.team_id
+         LEFT JOIN asset_pools p2 ON p2.id = s.pool_id
+         LEFT JOIN departments pd ON pd.id = p2.responsible_department_id
+         LEFT JOIN teams pt ON pt.id = p2.responsible_team_id
+         WHERE s.organization_id = ${orgRef} AND s.status = 'active'
+           AND (s.employee_id = ${empRef} OR d.manager_employee_id = ${empRef} OR tm.lead_employee_id = ${empRef} OR pd.manager_employee_id = ${empRef} OR pt.lead_employee_id = ${empRef})
+       )`
+    )
   }
   const rows = await c.many<{ id: string }>(`SELECT a.id FROM assets a WHERE ${where.join(' AND ')} LIMIT ${MAX_SCOPE_ASSETS + 1}`, p.values)
   if (rows.length > MAX_SCOPE_ASSETS) invalid('scope', `This scope matches more than ${MAX_SCOPE_ASSETS} assets; narrow it (e.g. by location or category).`)

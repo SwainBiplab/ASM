@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import jsQR from 'jsqr'
+import type JsQR from 'jsqr'
 import type { AssetLookupResult } from '@shared/api'
 import { call } from '../../api'
 import { Alert, Button, ErrorAlert, PageHeader, Panel } from '../../components/ui'
@@ -55,11 +55,18 @@ export function ScanPage({ navigate }: { navigate: (route: string) => void }) {
 
   useEffect(() => stopCamera, [])
 
+  // `jsqr` (~130 KB) is only ever needed by someone who actually opens the camera, so it's a
+  // dynamic import rather than a static one -- everyone else's initial page load stays lighter.
+  const jsQRRef = useRef<typeof JsQR | null>(null)
+
   const startCamera = async () => {
     setCameraError(null)
     setError(null)
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      const [stream] = await Promise.all([
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }),
+        jsQRRef.current ? Promise.resolve() : import('jsqr').then((m) => { jsQRRef.current = m.default })
+      ])
       streamRef.current = stream
       setCameraOpen(true)
     } catch {
@@ -75,7 +82,8 @@ export function ScanPage({ navigate }: { navigate: (route: string) => void }) {
     const video = videoRef.current
     const canvas = canvasRef.current
     const stream = streamRef.current
-    if (!video || !canvas || !stream) return
+    const jsQR = jsQRRef.current
+    if (!video || !canvas || !stream || !jsQR) return
     video.srcObject = stream
     void video.play()
     const ctx = canvas.getContext('2d', { willReadFrequently: true })

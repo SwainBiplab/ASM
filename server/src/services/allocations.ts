@@ -524,6 +524,43 @@ async function withLocationPaths(c: SqlClient, ctx: OpContext, rows: AssignmentR
   return rows.map((r) => ({ ...r, locationPath: r.locationId ? (paths.get(r.locationId)?.path ?? null) : null }))
 }
 
+/**
+ * Every active assignment an employee has custody of: their own direct assignments, plus anything
+ * assigned to a department they manage, a team they lead, or a pool whose responsible department/
+ * team they manage/lead (W-16/W-22: previously only direct assignments were swept into exit
+ * clearance or audit "custodian" scope, silently missing shared equipment a manager was actually
+ * accountable for). A row can only ever match one branch, since an assignment has exactly one
+ * target (employee XOR department XOR team XOR pool, enforced by the CHECK constraint, D39) --
+ * so no `DISTINCT` is needed despite the joins.
+ */
+export async function custodyAssignmentsForEmployee(c: SqlClient, org: string, employeeId: string, forUpdate: boolean): Promise<Array<{ id: string; assetId: string }>> {
+  return c.many<{ id: string; assetId: string }>(
+    `SELECT s.id, s.asset_id AS "assetId"
+     FROM asset_assignments s
+     LEFT JOIN departments d ON d.id = s.department_id
+     LEFT JOIN teams tm ON tm.id = s.team_id
+     LEFT JOIN asset_pools p ON p.id = s.pool_id
+     LEFT JOIN departments pd ON pd.id = p.responsible_department_id
+     LEFT JOIN teams pt ON pt.id = p.responsible_team_id
+     WHERE s.organization_id = $1 AND s.status = 'active'
+       AND (s.employee_id = $2 OR d.manager_employee_id = $2 OR tm.lead_employee_id = $2 OR pd.manager_employee_id = $2 OR pt.lead_employee_id = $2)
+     ORDER BY s.assigned_at${forUpdate ? ' FOR UPDATE OF s' : ''}`,
+    [org, employeeId]
+  )
+}
+
+/** Dashboard figures; null when the user cannot view allocations (W-18: overdue returns, never alerted on before). */
+export async function allocationsMetrics(c: SqlClient, ctx: OpContext): Promise<{ active: number; overdueReturns: number } | null> {
+  if (!ctx.actor.permissions.has('allocations.view')) return null
+  const r = await c.one<{ active: number; overdueReturns: number }>(
+    `SELECT count(*) FILTER (WHERE status = 'active') AS active,
+            count(*) FILTER (WHERE status = 'active' AND expected_return_date IS NOT NULL AND expected_return_date < current_date) AS "overdueReturns"
+     FROM asset_assignments WHERE organization_id = $1`,
+    [ctx.actor.organizationId]
+  )
+  return { active: Number(r!.active), overdueReturns: Number(r!.overdueReturns) }
+}
+
 export async function listAssignments(db: Db, raw: AssignmentListInput, ctx: OpContext): Promise<Page<AssignmentView>> {
   assertPermission(ctx.actor.permissions, 'allocations.view')
   const input = assignmentListSchema.parse(raw)

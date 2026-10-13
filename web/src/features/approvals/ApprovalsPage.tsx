@@ -4,6 +4,7 @@ import type { ApprovalStepInput, SaveApprovalPolicyInput } from '@shared/procure
 import { formatMinor } from '@shared/assets'
 import { ApiError, call, formatDateTime } from '../../api'
 import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, Tabs, TextAreaField, TextField } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 import { useRoles, useUsers } from '../procurement/shared'
 
 type Tab = 'queue' | 'policies'
@@ -27,9 +28,10 @@ function QueueTab() {
   const [error, setError] = useState<unknown>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [deciding, setDeciding] = useState<ApprovalQueueItem | null>(null)
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('approvals.listQueue', { page: 1, pageSize: 100 }).then(setData, setError)
+    guard(call('approvals.listQueue', { page: 1, pageSize: 100 })).then(setData, setError)
   }, [])
   useEffect(load, [load])
   return (
@@ -90,9 +92,10 @@ function PoliciesTab() {
   const [list, setList] = useState<ApprovalPolicySummary[]>([])
   const [error, setError] = useState<unknown>(null)
   const [editing, setEditing] = useState<ApprovalPolicySummary | 'new' | null>(null)
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('approvals.listPolicies', {}).then(setList, setError)
+    guard(call('approvals.listPolicies', {})).then(setList, setError)
   }, [])
   useEffect(load, [load])
   return (

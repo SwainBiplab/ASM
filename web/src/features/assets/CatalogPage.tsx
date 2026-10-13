@@ -3,6 +3,7 @@ import type { CategoryView, ModelView, SessionInfo, SupplierView } from '@shared
 import { DOMAIN_LABELS, type AssetDomain, type TrackingMode } from '@shared/assets'
 import { ApiError, call } from '../../api'
 import { ActiveBadge, Button, Dialog, ErrorAlert, PageHeader, Panel, ReasonDialog, SelectField, Tabs, TextAreaField, TextField } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 import { optionList } from '../organization/lookups'
 
 type Tab = 'categories' | 'models' | 'suppliers'
@@ -27,8 +28,9 @@ function useList<T>(load: (includeInactive: boolean) => Promise<T[]>) {
   const [items, setItems] = useState<T[]>([])
   const [includeInactive, setIncludeInactive] = useState(false)
   const [error, setError] = useState<unknown>(null)
+  const guard = useLatestOnly()
   const reload = useCallback(() => {
-    load(includeInactive).then(setItems, setError)
+    guard(load(includeInactive)).then(setItems, setError)
   }, [load, includeInactive])
   useEffect(reload, [reload])
   return { items, includeInactive, setIncludeInactive, error, reload }

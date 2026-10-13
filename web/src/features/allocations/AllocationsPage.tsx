@@ -3,6 +3,7 @@ import { ASSIGNMENT_STATUS_LABELS, ASSIGNMENT_STATUSES, ASSIGNMENT_TARGET_TYPES,
 import type { AssignmentView, Page, SessionInfo } from '@shared/api'
 import { call, formatDateTime } from '../../api'
 import { Alert, Button, ErrorAlert, PageHeader, Panel, SelectField, TextField } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 import { IssueDialog, ReturnDialog, TransferDialog } from './dialogs'
 import { AckBadge, AssignmentStatusBadge, HandoverReceipt, type PickedAsset } from './shared'
 
@@ -24,9 +25,10 @@ export function AllocationsPage({ session, navigate }: { session: SessionInfo; n
   const [receipt, setReceipt] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('allocations.list', { status, ...(targetType ? { targetType } : {}), ...(query.trim() ? { query: query.trim() } : {}), overdueOnly: overdue, pendingAcknowledgmentOnly: pending, page, pageSize: PAGE_SIZE }).then(setData, setError)
+    guard(call('allocations.list', { status, ...(targetType ? { targetType } : {}), ...(query.trim() ? { query: query.trim() } : {}), overdueOnly: overdue, pendingAcknowledgmentOnly: pending, page, pageSize: PAGE_SIZE })).then(setData, setError)
   }, [status, targetType, query, overdue, pending, page])
   useEffect(() => {
     const t = window.setTimeout(load, 200)

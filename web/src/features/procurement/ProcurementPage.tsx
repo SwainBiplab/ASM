@@ -4,6 +4,7 @@ import type { RequestItemInput, SaveRequestDraftInput } from '@shared/procuremen
 import { formatMinor } from '@shared/assets'
 import { ApiError, apiUrl, call, downloadFile, formatDateTime, uploadFile } from '../../api'
 import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 import { RequestStatusBadge, useCategories } from './shared'
 
 const PAGE_SIZE = 50
@@ -18,9 +19,10 @@ export function ProcurementPage({ session, selectedId, navigate }: { session: Se
   const [error, setError] = useState<unknown>(null)
   const [editing, setEditing] = useState(false)
 
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('procurement.list', { status, query: query.trim() || undefined, page, pageSize: PAGE_SIZE }).then(setData, setError)
+    guard(call('procurement.list', { status, query: query.trim() || undefined, page, pageSize: PAGE_SIZE })).then(setData, setError)
   }, [status, query, page])
   useEffect(() => {
     const t = window.setTimeout(load, 200)
@@ -134,9 +136,10 @@ function RequestDetail({ requestId, session, onBack }: { requestId: string; sess
   const [notice, setNotice] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('procurement.get', { requestId }).then(setR, setError)
+    guard(call('procurement.get', { requestId })).then(setR, setError)
   }, [requestId])
   useEffect(load, [load])
   if (!r) return <div className="stack"><ErrorAlert error={error} onRetry={load} />{!error ? <p className="faint" role="status">Loading request…</p> : null}</div>

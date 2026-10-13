@@ -3,6 +3,7 @@ import type { DepartmentView, LocationView, PoolView, SessionInfo, TeamView, Wor
 import { LOCATION_PARENT_RULES, LOCATION_TYPE_LABELS, LOCATION_TYPES, WORKSTATION_LOCATION_TYPES, type LocationType } from '@shared/organization'
 import { ApiError, call } from '../../api'
 import { ActiveBadge, Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, ReasonDialog, SelectField, Tabs, TextAreaField, TextField } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 import { EmployeePicker, optionList } from './lookups'
 
 type Tab = 'departments' | 'locations' | 'workstations' | 'pools'
@@ -41,8 +42,9 @@ function useList<T>(load: (includeInactive: boolean, search: string) => Promise<
   const [includeInactive, setIncludeInactive] = useState(false)
   const [search, setSearch] = useState('')
   const [error, setError] = useState<unknown>(null)
+  const guard = useLatestOnly()
   const reload = useCallback(() => {
-    load(includeInactive, search).then(setItems, setError)
+    guard(load(includeInactive, search)).then(setItems, setError)
   }, [load, includeInactive, search])
   useEffect(reload, [reload])
   return { items, includeInactive, setIncludeInactive, search, setSearch, error, setError, reload }
@@ -87,8 +89,9 @@ function DepartmentsTab({ canManage }: { canManage: boolean }) {
   const [editingTeam, setEditingTeam] = useState<TeamView | 'new' | null>(null)
   const [toggling, setToggling] = useState<{ kind: 'department' | 'team'; id: string; name: string; isActive: boolean } | null>(null)
 
+  const guardTeams = useLatestOnly()
   const loadTeams = useCallback(() => {
-    if (selected) call('teams.list', { departmentId: selected.id, includeInactive: true }).then(setTeams, list.setError)
+    if (selected) guardTeams(call('teams.list', { departmentId: selected.id, includeInactive: true })).then(setTeams, list.setError)
   }, [selected, list.setError])
   useEffect(loadTeams, [loadTeams])
 

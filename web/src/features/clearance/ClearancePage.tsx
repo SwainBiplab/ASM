@@ -4,6 +4,7 @@ import type { ClearanceDetail, ClearanceItemView, ClearanceSummary, Page, Sessio
 import { CONDITION_LABELS, type AssetCondition } from '@shared/assets'
 import { ApiError, apiUrl, call, downloadFile, formatDateTime, uploadFile } from '../../api'
 import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 import { conditionOptions } from '../allocations/shared'
 import { EmployeePicker, optionList, useOrgLookups } from '../organization/lookups'
 
@@ -17,9 +18,10 @@ export function ClearancePage({ session, selectedId, navigate }: { session: Sess
   const [data, setData] = useState<Page<ClearanceSummary> | null>(null)
   const [error, setError] = useState<unknown>(null)
   const [opening, setOpening] = useState(false)
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('exitClearance.list', { status, ...(query.trim() ? { query: query.trim() } : {}), pageSize: 100 }).then(setData, setError)
+    guard(call('exitClearance.list', { status, ...(query.trim() ? { query: query.trim() } : {}), pageSize: 100 })).then(setData, setError)
   }, [status, query])
   useEffect(() => {
     const t = window.setTimeout(load, 200)
@@ -103,9 +105,10 @@ function ClearanceDetailView({ id, session, onBack }: { id: string; session: Ses
   const [notice, setNotice] = useState<string | null>(null)
   const [action, setAction] = useState<ItemAction>(null)
   const [closing, setClosing] = useState<'close' | 'cancel' | null>(null)
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('exitClearance.get', { clearanceId: id }).then(setD, setError)
+    guard(call('exitClearance.get', { clearanceId: id })).then(setD, setError)
   }, [id])
   useEffect(load, [load])
   const updated = (next: ClearanceDetail, message: string) => {

@@ -5,6 +5,9 @@
 
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
+# better-sqlite3 (used by the one-way legacy-SQLite-to-Postgres cutover CLI, server:migrate-legacy)
+# has no prebuilt binary for this image's platform/ABI and falls back to compiling from source.
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .

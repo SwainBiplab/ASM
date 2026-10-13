@@ -7,6 +7,7 @@ import { WARRANTY_REPORT_FILTER_LABELS, WARRANTY_REPORT_FILTERS } from '@shared/
 import { REQUEST_STATUS_LABELS, ORDER_STATUS_LABELS } from '@shared/procurement'
 import { apiUrl, call, downloadFile, formatDateTime } from '../../api'
 import { Button, ErrorAlert, PageHeader, Panel, SelectField, Tabs, TextField } from '../../components/ui'
+import { useLatestOnly } from '../../hooks'
 import { useCategories, useDepartments, useLocations, useSuppliers } from '../procurement/shared'
 
 type Tab = 'assetValuation' | 'maintenanceCost' | 'procurement' | 'warranty' | 'disposals'
@@ -79,9 +80,10 @@ function AssetValuationTab({ session, navigate }: { session: SessionInfo; naviga
     categoryId: categoryId || undefined, locationId: locationId || undefined, departmentId: departmentId || undefined, supplierId: supplierId || undefined,
     lifecycle, fromDate: fromDate || undefined, toDate: toDate || undefined, onlyMissingFinancialMetadata: onlyMissing
   }
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('reports.assetValuation', { ...filters, page, pageSize: PAGE_SIZE }).then(setData, setError)
+    guard(call('reports.assetValuation', { ...filters, page, pageSize: PAGE_SIZE })).then(setData, setError)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryId, locationId, departmentId, supplierId, lifecycle, fromDate, toDate, onlyMissing, page])
   useEffect(load, [load])
@@ -152,9 +154,10 @@ function MaintenanceCostTab({ session, navigate }: { session: SessionInfo; navig
   const [error, setError] = useState<unknown>(null)
 
   const filters = { categoryId: categoryId || undefined, locationId: locationId || undefined, vendorQuery: vendorQuery.trim() || undefined, fromDate: fromDate || undefined, toDate: toDate || undefined }
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('reports.maintenanceCost', { ...filters, page, pageSize: PAGE_SIZE }).then(setData, setError)
+    guard(call('reports.maintenanceCost', { ...filters, page, pageSize: PAGE_SIZE })).then(setData, setError)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryId, locationId, vendorQuery, fromDate, toDate, page])
   useEffect(() => {
@@ -228,9 +231,10 @@ function ProcurementTab({ session, navigate }: { session: SessionInfo; navigate:
   const [page, setPage] = useState(1)
   const [data, setData] = useState<ProcurementSummaryReport | null>(null)
   const [error, setError] = useState<unknown>(null)
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('reports.procurementSummary', { fromDate: fromDate || undefined, toDate: toDate || undefined, page, pageSize: PAGE_SIZE }).then(setData, setError)
+    guard(call('reports.procurementSummary', { fromDate: fromDate || undefined, toDate: toDate || undefined, page, pageSize: PAGE_SIZE })).then(setData, setError)
   }, [fromDate, toDate, page])
   useEffect(load, [load])
 
@@ -294,9 +298,10 @@ function WarrantyTab({ session, navigate }: { session: SessionInfo; navigate: (r
   const [page, setPage] = useState(1)
   const [data, setData] = useState<WarrantyReport | null>(null)
   const [error, setError] = useState<unknown>(null)
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('reports.warranty', { filter, windowDays: windowDays.trim() ? Number(windowDays) : undefined, page, pageSize: PAGE_SIZE }).then(setData, setError)
+    guard(call('reports.warranty', { filter, windowDays: windowDays.trim() ? Number(windowDays) : undefined, page, pageSize: PAGE_SIZE })).then(setData, setError)
   }, [filter, windowDays, page])
   useEffect(load, [load])
 
@@ -346,9 +351,10 @@ function DisposalsTab({ session, navigate }: { session: SessionInfo; navigate: (
   const [page, setPage] = useState(1)
   const [data, setData] = useState<DisposalReport | null>(null)
   const [error, setError] = useState<unknown>(null)
+  const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
-    call('reports.disposals', { fromDate: fromDate || undefined, toDate: toDate || undefined, page, pageSize: PAGE_SIZE }).then(setData, setError)
+    guard(call('reports.disposals', { fromDate: fromDate || undefined, toDate: toDate || undefined, page, pageSize: PAGE_SIZE })).then(setData, setError)
   }, [fromDate, toDate, page])
   useEffect(load, [load])
 
