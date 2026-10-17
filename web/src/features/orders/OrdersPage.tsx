@@ -3,7 +3,7 @@ import type { Page, PurchaseOrderDetail, PurchaseOrderSummary, PurchaseRequestSu
 import type { OrderItemInput } from '@shared/procurementSchemas'
 import { formatMinor } from '@shared/assets'
 import { ApiError, call, formatDateTime } from '../../api'
-import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField, useToast } from '../../components/ui'
 import { useLatestOnly } from '../../hooks'
 import { OrderStatusBadge, useCategories, useSuppliers } from '../procurement/shared'
 
@@ -128,7 +128,7 @@ function OrderDetail({ poId, session, onBack }: { poId: string; session: Session
   const has = (p: string) => session.permissions.includes(p as never)
   const [o, setO] = useState<PurchaseOrderDetail | null>(null)
   const [error, setError] = useState<unknown>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const toast = useToast()
   const [amending, setAmending] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const guard = useLatestOnly()
@@ -143,7 +143,6 @@ function OrderDetail({ poId, session, onBack }: { poId: string; session: Session
     <div className="stack">
       <PageHeader title={o.poNumber} description={`${o.supplierName} — from request ${o.requestNumber}`} actions={<Button onClick={onBack}>All orders</Button>} />
       <ErrorAlert error={error} />
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
       <Panel>
         <div className="chips"><OrderStatusBadge status={o.status} /></div>
         <dl className="dl">
@@ -171,8 +170,8 @@ function OrderDetail({ poId, session, onBack }: { poId: string; session: Session
           </ul>
         </Panel>
       ) : null}
-      {amending ? <AmendDialog order={o} onClose={() => setAmending(false)} onDone={(n) => { setAmending(false); setO(n); setNotice('Order amended.') }} /> : null}
-      {cancelling ? <CancelOrderDialog poId={o.id} onClose={() => setCancelling(false)} onDone={(n) => { setCancelling(false); setO(n); setNotice('Order cancelled.') }} /> : null}
+      {amending ? <AmendDialog order={o} onClose={() => setAmending(false)} onDone={(n) => { setAmending(false); setO(n); toast.success('Order amended.') }} /> : null}
+      {cancelling ? <CancelOrderDialog poId={o.id} onClose={() => setCancelling(false)} onDone={(n) => { setCancelling(false); setO(n); toast.success('Order cancelled.') }} /> : null}
     </div>
   )
 }

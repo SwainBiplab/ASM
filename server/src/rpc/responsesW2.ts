@@ -17,12 +17,14 @@ import type {
   LocationView,
   ModelView,
   PoolView,
+  ReferenceImportPreview,
   SupplierView,
   TeamView,
   WorkstationView
 } from '@shared/api'
 import { ASSET_DOMAINS, ASSET_IMPORT_FIELDS, CONDITIONS, DISPOSAL_METHODS, DOCUMENT_PURPOSES, LIFECYCLE_STATUSES, OPERATIONAL_STATUSES, TRACKING_MODES } from '@shared/assets'
 import { EMPLOYMENT_STATUSES, IMPORT_DATE_FORMATS, IMPORT_FIELDS, LOCATION_TYPES, TEAM_KINDS, WORKSTATION_KINDS } from '@shared/organization'
+import { REFERENCE_IMPORT_KINDS } from '@shared/referenceImport'
 import { auditEventOutput, dateOnly, iso, nullable, uuid } from './responses'
 
 /** W2 output schemas (D34): organization, employees, import, catalogue, assets, documents, labels. */
@@ -150,3 +152,22 @@ export const assetImportPreviewOutput: z.ZodType<AssetImportPreview> = z.object(
 })
 export const assetImportSheetChoiceOutput: z.ZodType<AssetImportSheetChoice> = z.object({ needsSheetSelection: z.literal(true), sheets: z.array(text) })
 export const assetImportUploadOutput: z.ZodType<AssetImportPreview | AssetImportSheetChoice> = z.union([assetImportPreviewOutput, assetImportSheetChoiceOutput])
+
+export const referenceImportPreviewOutput: z.ZodType<ReferenceImportPreview> = z.object({
+  importId: z.string().regex(/^[0-9a-f]{32}$/),
+  kind: z.enum(REFERENCE_IMPORT_KINDS),
+  fileName: text,
+  fileBytes: int,
+  headers: z.array(text),
+  mapping: z.record(z.string(), nullable(int)),
+  fileIssues: z.array(text),
+  rows: z.array(
+    z.object({
+      rowNumber: int,
+      status: z.enum(['accepted', 'warning', 'rejected', 'duplicate']),
+      values: z.record(z.string(), text),
+      issues: z.array(z.object({ field: nullable(text), severity: z.enum(['error', 'warning']), message: text }))
+    })
+  ),
+  counts: importCounts
+})

@@ -45,11 +45,13 @@ import {
   updateWorkstationSchema,
   workstationListInputSchema
 } from '@shared/orgSchemas'
+import { referenceImportCommitInputSchema, referenceImportPreviewInputSchema, referenceImportRefSchema } from '@shared/referenceImportSchemas'
 import { voidInputSchema } from '@shared/schemas'
 import { AppError, type OpContext } from '../core'
 import type { DocumentStorage } from '../storage/storage'
 import { cancelEmployeeImport, commitEmployeeImport, previewEmployeeImport } from '../imports/employeeImport'
 import { cancelAssetImport, commitAssetImport, previewAssetImport } from '../imports/assetImport'
+import { cancelReferenceImport, commitReferenceImport, previewReferenceImport } from '../imports/referenceImport'
 import * as assets from '../services/assets'
 import * as catalog from '../services/catalog'
 import { removeDocumentLink } from '../services/documents'
@@ -147,6 +149,17 @@ export function buildW2Commands(storage: DocumentStorage): { [K in W2CommandName
       auth: session,
       handler: async (i, c) => {
         await cancelAssetImport(c.db, i.importId, op(c))
+        return null
+      }
+    },
+    'referenceData.importPreview': { input: referenceImportPreviewInputSchema, output: out.referenceImportPreviewOutput, auth: session, handler: (i, c) => previewReferenceImport(c.db, i, op(c)) },
+    'referenceData.importCommit': { input: referenceImportCommitInputSchema, output: out.importResultOutput, auth: session, idempotency: 'required', handler: (i, c) => commitReferenceImport(c.db, i, op(c)) },
+    'referenceData.importCancel': {
+      input: referenceImportRefSchema,
+      output: nullOutput,
+      auth: session,
+      handler: async (i, c) => {
+        await cancelReferenceImport(c.db, i.importId, op(c))
         return null
       }
     },

@@ -47,6 +47,8 @@ import type {
   WorkstationListInput
 } from './orgSchemas'
 import type { PermissionKey } from './permissions'
+import type { ReferenceImportKind } from './referenceImport'
+import type { ReferenceImportCommitInput, ReferenceImportPreviewInput, ReferenceImportRefInput } from './referenceImportSchemas'
 import type {
   AcknowledgmentMethod,
   AcknowledgmentPolicy,
@@ -987,6 +989,33 @@ export interface ImportResult {
   counts: ImportCounts
 }
 
+// ---------- Reference-data import (categories/models/suppliers/departments/teams/locations/workstations) ----------
+
+export interface ReferenceImportIssue {
+  field: string | null
+  severity: 'error' | 'warning'
+  message: string
+}
+
+export interface ReferenceImportRowView {
+  rowNumber: number
+  status: ImportRowStatus
+  values: Record<string, string>
+  issues: ReferenceImportIssue[]
+}
+
+export interface ReferenceImportPreview {
+  importId: string
+  kind: ReferenceImportKind
+  fileName: string
+  fileBytes: number
+  headers: string[]
+  mapping: Record<string, number | null>
+  fileIssues: string[]
+  rows: ReferenceImportRowView[]
+  counts: ImportCounts
+}
+
 // ---------- Asset register (M3) ----------
 
 export interface CategoryView {
@@ -1253,6 +1282,9 @@ export interface CommandMap {
   'assets.importPreview': { input: AssetImportPreviewInput; output: AssetImportPreview }
   'assets.importCommit': { input: AssetImportCommitInput; output: ImportResult }
   'assets.importCancel': { input: { importId: string }; output: null }
+  'referenceData.importPreview': { input: ReferenceImportPreviewInput; output: ReferenceImportPreview }
+  'referenceData.importCommit': { input: ReferenceImportCommitInput; output: ImportResult }
+  'referenceData.importCancel': { input: ReferenceImportRefInput; output: null }
   'documents.attach': { input: AttachDocumentInput; output: DocumentLinkView | null }
   'documents.removeLink': { input: RemoveDocumentLinkInput; output: null }
   // W4 (web only; not part of the desktop prototype)
@@ -1479,7 +1511,10 @@ export const WEB_ONLY_COMMAND_NAMES = [
   'reports.disposals',
   'assets.importPreview',
   'assets.importCommit',
-  'assets.importCancel'
+  'assets.importCancel',
+  'referenceData.importPreview',
+  'referenceData.importCommit',
+  'referenceData.importCancel'
 ] as const satisfies readonly CommandName[]
 
 /** Commands available to the frozen desktop prototype (its command table must cover exactly these). */

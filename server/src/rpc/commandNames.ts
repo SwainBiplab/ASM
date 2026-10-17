@@ -42,6 +42,7 @@ export const W2_COMMANDS = [
   'assets.getCodeConfig', 'assets.updateCodeConfig', 'assets.search', 'assets.get', 'assets.create', 'assets.update',
   'assets.changeLifecycle', 'assets.lookup', 'assets.generateLabels',
   'assets.importPreview', 'assets.importCommit', 'assets.importCancel',
+  'referenceData.importPreview', 'referenceData.importCommit', 'referenceData.importCancel',
   'documents.removeLink'
 ] as const satisfies readonly CommandName[]
 

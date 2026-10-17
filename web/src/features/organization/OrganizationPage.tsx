@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import type { DepartmentView, LocationView, PoolView, SessionInfo, TeamView, WorkstationView } from '@shared/api'
 import { LOCATION_PARENT_RULES, LOCATION_TYPE_LABELS, LOCATION_TYPES, WORKSTATION_LOCATION_TYPES, type LocationType } from '@shared/organization'
 import { ApiError, call } from '../../api'
-import { ActiveBadge, Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, ReasonDialog, SelectField, Tabs, TextAreaField, TextField } from '../../components/ui'
+import { ActiveBadge, Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, ReasonDialog, SelectField, Tabs, TextAreaField, TextField, useToast } from '../../components/ui'
 import { useLatestOnly } from '../../hooks'
 import { EmployeePicker, optionList } from './lookups'
+import { ReferenceImport } from './ReferenceImport'
 
 type Tab = 'departments' | 'locations' | 'workstations' | 'pools'
 
@@ -88,6 +89,8 @@ function DepartmentsTab({ canManage }: { canManage: boolean }) {
   const [editing, setEditing] = useState<DepartmentView | 'new' | null>(null)
   const [editingTeam, setEditingTeam] = useState<TeamView | 'new' | null>(null)
   const [toggling, setToggling] = useState<{ kind: 'department' | 'team'; id: string; name: string; isActive: boolean } | null>(null)
+  const [importing, setImporting] = useState<'departments' | 'teams' | null>(null)
+  const toast = useToast()
 
   const guardTeams = useLatestOnly()
   const loadTeams = useCallback(() => {
@@ -100,9 +103,23 @@ function DepartmentsTab({ canManage }: { canManage: boolean }) {
     loadTeams()
   }
 
+  if (importing) {
+    return <ReferenceImport kind={importing} onDone={(message) => { setImporting(null); if (message) toast.success(message); refresh() }} />
+  }
+
   return (
     <div className={selected ? 'split' : 'split split--single'}>
-      <Panel flush title="Departments" actions={canManage ? <Button variant="primary" small onClick={() => setEditing('new')}>Add department</Button> : null}>
+      <Panel
+        flush
+        title="Departments"
+        actions={canManage ? (
+          <>
+            <Button small onClick={() => setImporting('departments')}>Import departments</Button>
+            <Button small onClick={() => setImporting('teams')}>Import teams</Button>
+            <Button variant="primary" small onClick={() => setEditing('new')}>Add department</Button>
+          </>
+        ) : null}
+      >
         <ListToolbar {...list} />
         <ErrorAlert error={list.error} />
         <div className="table-wrap">
@@ -287,10 +304,25 @@ function LocationsTab({ canManage }: { canManage: boolean }) {
   const list = useList(useCallback((includeInactive: boolean, search: string) => call('locations.list', { includeInactive, ...(search ? { search } : {}) }), []))
   const [editing, setEditing] = useState<{ location: LocationView | null; parentId: string | null } | null>(null)
   const [toggling, setToggling] = useState<LocationView | null>(null)
+  const [importing, setImporting] = useState(false)
+  const toast = useToast()
   const depth = (l: LocationView) => l.path.split(' / ').length - 1
 
+  if (importing) {
+    return <ReferenceImport kind="locations" onDone={(message) => { setImporting(false); if (message) toast.success(message); list.reload() }} />
+  }
+
   return (
-    <Panel flush title="Location hierarchy" actions={canManage ? <Button variant="primary" small onClick={() => setEditing({ location: null, parentId: null })}>Add office / site</Button> : null}>
+    <Panel
+      flush
+      title="Location hierarchy"
+      actions={canManage ? (
+        <>
+          <Button small onClick={() => setImporting(true)}>Import CSV/Excel</Button>
+          <Button variant="primary" small onClick={() => setEditing({ location: null, parentId: null })}>Add office / site</Button>
+        </>
+      ) : null}
+    >
       <ListToolbar {...list} />
       <ErrorAlert error={list.error} />
       <div className="table-wrap">
@@ -402,12 +434,27 @@ function WorkstationsTab({ canManage }: { canManage: boolean }) {
   const [locations, setLocations] = useState<LocationView[]>([])
   const [editing, setEditing] = useState<WorkstationView | 'new' | null>(null)
   const [toggling, setToggling] = useState<WorkstationView | null>(null)
+  const [importing, setImporting] = useState(false)
+  const toast = useToast()
   useEffect(() => {
     call('locations.list', {}).then((ls) => setLocations(ls.filter((l) => WORKSTATION_LOCATION_TYPES.includes(l.locationType))), list.setError)
   }, [list.setError])
 
+  if (importing) {
+    return <ReferenceImport kind="workstations" onDone={(message) => { setImporting(false); if (message) toast.success(message); list.reload() }} />
+  }
+
   return (
-    <Panel flush title="Workstations and seats" actions={canManage ? <Button variant="primary" small disabled={locations.length === 0} onClick={() => setEditing('new')}>Add workstation</Button> : null}>
+    <Panel
+      flush
+      title="Workstations and seats"
+      actions={canManage ? (
+        <>
+          <Button small disabled={locations.length === 0} onClick={() => setImporting(true)}>Import CSV/Excel</Button>
+          <Button variant="primary" small disabled={locations.length === 0} onClick={() => setEditing('new')}>Add workstation</Button>
+        </>
+      ) : null}
+    >
       <ListToolbar {...list} />
       <ErrorAlert error={list.error} />
       {canManage && locations.length === 0 ? <Alert tone="info">Add a floor, room or bay under Locations first; workstations are placed inside one.</Alert> : null}

@@ -3,7 +3,7 @@ import type { SessionInfo } from '@shared/api'
 import type { AppSettings } from '@shared/schemas'
 import { ACKNOWLEDGMENT_POLICIES, ACKNOWLEDGMENT_POLICY_LABELS } from '@shared/allocations'
 import { ApiError, call } from '../../api'
-import { Alert, Button, ErrorAlert, PageHeader, Panel, TextField } from '../../components/ui'
+import { Button, ErrorAlert, PageHeader, Panel, TextField, useToast } from '../../components/ui'
 import { AssetCodeSettings } from './AssetCodeSettings'
 
 export function SettingsPage({ session }: { session: SessionInfo }) {
@@ -11,7 +11,7 @@ export function SettingsPage({ session }: { session: SessionInfo }) {
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [error, setError] = useState<unknown>(null)
   const [fields, setFields] = useState<Record<string, string>>({})
-  const [saved, setSaved] = useState(false)
+  const toast = useToast()
 
   useEffect(() => {
     call('settings.get').then(setSettings, setError)
@@ -19,12 +19,11 @@ export function SettingsPage({ session }: { session: SessionInfo }) {
 
   const save = async () => {
     if (!settings) return
-    setSaved(false)
     setError(null)
     setFields({})
     try {
       setSettings(await call('settings.update', settings))
-      setSaved(true)
+      toast.success('Settings saved.')
     } catch (err) {
       setError(err)
       if (err instanceof ApiError) setFields(err.fieldErrors)
@@ -43,7 +42,6 @@ export function SettingsPage({ session }: { session: SessionInfo }) {
     <div className="stack">
       <PageHeader title="Settings" description="Preferences for your organization. Changes apply to every user." />
       <ErrorAlert error={error} />
-      {saved ? <Alert tone="success">Settings saved.</Alert> : null}
       {settings ? (
         <Panel title="Preferences">
           <div className="form-grid">

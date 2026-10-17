@@ -65,6 +65,13 @@ export async function buildApp({ config, db, storage: injected }: AppDeps): Prom
 
   await app.register(helmet, {
     contentSecurityPolicy: {
+      // Without this, helmet merges in its own defaults alongside ours -- including
+      // `upgrade-insecure-requests`, which silently rewrites every asset fetch on the page to
+      // https:// even when the page itself is served over plain http. That breaks any
+      // http-only deployment (e.g. a bare IP with no TLS yet): the browser reports it as a
+      // blocked cross-origin/CORS-looking failure, but the real cause is the forced https
+      // upgrade hitting a port with no TLS listener.
+      useDefaults: false,
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { AssignmentView, EmployeeDetail, EmployeeListItem, Page, SessionInfo } from '@shared/api'
 import { EDITABLE_EMPLOYMENT_STATUSES, EMPLOYMENT_STATUS_LABELS, EMPLOYMENT_STATUSES, type EmploymentStatus } from '@shared/organization'
 import { ApiError, call, formatDateTime } from '../../api'
-import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, SkeletonRows, TextAreaField, TextField, useToast } from '../../components/ui'
 import { useLatestOnly } from '../../hooks'
 import { EmployeePicker, optionList, useOrgLookups, type OrgLookups } from '../organization/lookups'
 import { EmployeeImport } from './EmployeeImport'
@@ -26,7 +26,7 @@ export function EmployeesPage({ session }: { session: SessionInfo }) {
   const [data, setData] = useState<Page<EmployeeListItem> | null>(null)
   const [selected, setSelected] = useState<EmployeeDetail | null>(null)
   const [error, setError] = useState<unknown>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const toast = useToast()
   const [editing, setEditing] = useState<EmployeeDetail | 'new' | null>(null)
   const [exiting, setExiting] = useState<EmployeeDetail | null>(null)
 
@@ -45,7 +45,7 @@ export function EmployeesPage({ session }: { session: SessionInfo }) {
   }
   const afterChange = (e: EmployeeDetail, message: string) => {
     setSelected(e)
-    setNotice(message)
+    toast.success(message)
     load()
   }
 
@@ -54,7 +54,7 @@ export function EmployeesPage({ session }: { session: SessionInfo }) {
       <EmployeeImport
         onDone={(message) => {
           setMode('list')
-          if (message) setNotice(message)
+          if (message) toast.success(message)
           load()
         }}
       />
@@ -75,7 +75,6 @@ export function EmployeesPage({ session }: { session: SessionInfo }) {
         }
       />
       <ErrorAlert error={error} />
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
       <div className={selected ? 'split' : 'split split--single'}>
         <Panel flush title={data ? `${data.total} employees` : 'Employees'}>
           <div className="toolbar">
@@ -94,6 +93,7 @@ export function EmployeesPage({ session }: { session: SessionInfo }) {
             <table className="grid">
               <thead><tr><th>Employee ID</th><th>Name</th><th>Department / team</th><th>Manager</th><th>Status</th></tr></thead>
               <tbody>
+                {!data && !error ? <SkeletonRows columns={5} /> : null}
                 {data?.items.map((e) => (
                   <tr key={e.id} className={`is-clickable ${selected?.id === e.id ? 'is-selected' : ''}`} onClick={() => void open(e.id)}>
                     <td className="ident">{e.employeeCode}</td>

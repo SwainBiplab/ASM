@@ -3,7 +3,7 @@ import { MOVEMENT_LABELS, RETURN_OUTCOME_LABELS, TARGET_TYPE_LABELS } from '@sha
 import type { AssetCustody, SessionInfo } from '@shared/api'
 import { CONDITION_LABELS } from '@shared/assets'
 import { call, formatDateTime } from '../../api'
-import { Alert, Button, ErrorAlert } from '../../components/ui'
+import { Alert, Button, ErrorAlert, useToast } from '../../components/ui'
 import { useLatestOnly } from '../../hooks'
 import { InspectDialog, IssueDialog, ReportLostDialog, ReturnDialog, TransferDialog } from './dialogs'
 import { AckBadge, AssignmentStatusBadge, HandoverReceipt } from './shared'
@@ -18,7 +18,7 @@ export function CustodyPanel({ assetId, assetCode, categoryName, assetLabel, ses
   const [error, setError] = useState<unknown>(null)
   const [open, setOpen] = useState<Open>(null)
   const [receipt, setReceipt] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const toast = useToast()
   const [faultPrompt, setFaultPrompt] = useState(false)
   const [reportingFault, setReportingFault] = useState(false)
   const canView = has('allocations.view')
@@ -32,7 +32,7 @@ export function CustodyPanel({ assetId, assetCode, categoryName, assetLabel, ses
   if (!canView) return null
   const done = (message: string, handoverId?: string) => {
     setOpen(null)
-    setNotice(message)
+    toast.success(message)
     if (handoverId) setReceipt(handoverId)
     load()
     onChanged()
@@ -43,7 +43,6 @@ export function CustodyPanel({ assetId, assetCode, categoryName, assetLabel, ses
     <section className="custody" aria-label="Custody">
       <h3 className="section-title">Custody</h3>
       <ErrorAlert error={error} onRetry={load} />
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
       {c ? (
         <div className="stack">
           {c.currentAssignment ? (
@@ -142,7 +141,7 @@ export function CustodyPanel({ assetId, assetCode, categoryName, assetLabel, ses
           onClose={() => setReportingFault(false)}
           onDone={() => {
             setReportingFault(false)
-            setNotice('Maintenance ticket opened.')
+            toast.success('Maintenance ticket opened.')
             load()
             onChanged()
           }}

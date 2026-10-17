@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { SessionInfo, StartupState } from '@shared/api'
 import { ApiError, call, onSessionInterrupted } from '../api'
+import { ToastProvider } from '../components/ui'
 import { ChangePasswordScreen } from '../features/auth/ChangePasswordScreen'
 import { LoginScreen } from '../features/auth/LoginScreen'
 import { SetupRequiredScreen } from '../features/auth/SetupRequiredScreen'
@@ -22,6 +23,14 @@ type Phase =
  * A page refresh restores the session from the HttpOnly cookie via `session.getCurrent`.
  */
 export function App() {
+  return (
+    <ToastProvider>
+      <AppShell />
+    </ToastProvider>
+  )
+}
+
+function AppShell() {
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' })
 
   const boot = useCallback(async (notice?: string) => {

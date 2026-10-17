@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react'
 import type { AssetListItem, AuditItemView, CategoryView, Page, PhysicalAuditDetail, PhysicalAuditSummary, SessionInfo } from '@shared/api'
 import { ApiError, apiUrl, call, downloadFile, formatDateTime, uploadFile } from '../../api'
-import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField, useToast } from '../../components/ui'
 import { useLatestOnly } from '../../hooks'
 import { AssetScanField } from '../maintenance/shared'
 import { EmployeePicker, optionList, useOrgLookups } from '../organization/lookups'
@@ -138,7 +138,7 @@ function AuditDetailView({ auditId, session, onBack }: { auditId: string; sessio
   const [items, setItems] = useState<Page<AuditItemView> | null>(null)
   const [itemStatus, setItemStatus] = useState<'all' | 'pending' | 'verified' | 'discrepancy_open' | 'investigating' | 'resolved' | 'accepted'>('all')
   const [error, setError] = useState<unknown>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const toast = useToast()
   const [action, setAction] = useState<ItemAction>(null)
   const [closing, setClosing] = useState<'close' | 'cancel' | null>(null)
 
@@ -154,7 +154,7 @@ function AuditDetailView({ auditId, session, onBack }: { auditId: string; sessio
   const [scanned, setScanned] = useState<AssetListItem | null>(null)
   const updated = (next: AuditItemView, message: string) => {
     setAction(null)
-    setNotice(message)
+    toast.success(message)
     load()
   }
   if (!x) return <div className="stack"><ErrorAlert error={error} onRetry={load} />{!error ? <p className="faint" role="status">Loading audit…</p> : null}</div>
@@ -173,7 +173,6 @@ function AuditDetailView({ auditId, session, onBack }: { auditId: string; sessio
         }
       />
       <ErrorAlert error={error} />
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
       <Panel title="Progress">
         <div className="ledger" aria-label="Audit progress">
           <div className="ledger__cell"><div className="ledger__value">{x.itemCount}</div><div className="ledger__label">Items</div></div>
@@ -237,7 +236,7 @@ function AuditDetailView({ auditId, session, onBack }: { auditId: string; sessio
           onClose={() => setScanned(null)}
           onDone={() => {
             setScanned(null)
-            setNotice(`${scanned.assetCode} recorded.`)
+            toast.success(`${scanned.assetCode} recorded.`)
             load()
           }}
         />
@@ -247,7 +246,7 @@ function AuditDetailView({ auditId, session, onBack }: { auditId: string; sessio
       {action?.kind === 'resolve' ? <ResolveDialog item={action.item} onClose={() => setAction(null)} onDone={(n) => updated(n, `${action.item.assetCode} resolved.`)} /> : null}
       {action?.kind === 'correctLocation' ? <CorrectLocationDialog item={action.item} onClose={() => setAction(null)} onDone={(n) => updated(n, `${action.item.assetCode}'s location corrected.`)} /> : null}
       {action?.kind === 'accept' ? <AcceptDialog item={action.item} onClose={() => setAction(null)} onDone={(n) => updated(n, `Exception accepted for ${action.item.assetCode}.`)} /> : null}
-      {closing ? <CloseCancelDialog audit={x} mode={closing} onClose={() => setClosing(null)} onDone={(n) => { setX(n); setClosing(null); setNotice(closing === 'close' ? 'Audit closed.' : 'Audit cancelled.') }} /> : null}
+      {closing ? <CloseCancelDialog audit={x} mode={closing} onClose={() => setClosing(null)} onDone={(n) => { setX(n); setClosing(null); toast.success(closing === 'close' ? 'Audit closed.' : 'Audit cancelled.') }} /> : null}
     </div>
   )
 }

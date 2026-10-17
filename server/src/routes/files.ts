@@ -3,13 +3,15 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { ASSET_SORTS, CONDITIONS, DOCUMENT_PURPOSES, LIFECYCLE_STATUSES, MAX_DOCUMENT_BYTES, OPERATIONAL_STATUSES, WARRANTY_FILTERS } from '@shared/assets'
 import { IMPORT_MAX_BYTES } from '@shared/organization'
+import { REFERENCE_IMPORT_KINDS } from '@shared/referenceImport'
 import { AppError, type Actor, type Logger, type OpContext } from '../core'
 import type { Db } from '../db/sql'
 import { toCsv } from '../exports/csv'
 import { startEmployeeImport } from '../imports/employeeImport'
 import { startAssetImport } from '../imports/assetImport'
+import { startReferenceImport } from '../imports/referenceImport'
 import { failure, requestHash, toFailure, withIdempotency, type DispatchOutcome } from '../rpc/dispatcher'
-import { importPreviewOutput, documentLinkOutput, assetImportUploadOutput } from '../rpc/responsesW2'
+import { importPreviewOutput, documentLinkOutput, assetImportUploadOutput, referenceImportPreviewOutput } from '../rpc/responsesW2'
 import { exportAssetRows } from '../services/assets'
 import { exportAssetValuationRows, exportDisposalRows, exportMaintenanceCostRows, exportProcurementDiscrepancyRows, exportWarrantyRows } from '../services/reports'
 import { WEB_DOCUMENT_OWNER_TYPES, attachDocument, readDocument } from '../services/documents'
@@ -28,6 +30,7 @@ export interface FileRouteDeps {
 const uuid = z.string().uuid()
 const documentUploadQuery = z.strictObject({ entityType: z.enum(WEB_DOCUMENT_OWNER_TYPES), entityId: uuid, purpose: z.enum(DOCUMENT_PURPOSES) })
 const assetImportUploadQuery = z.strictObject({ sheet: z.string().trim().min(1).max(200).optional() })
+const referenceImportUploadQuery = z.strictObject({ kind: z.enum(REFERENCE_IMPORT_KINDS) })
 const documentParams = z.strictObject({ documentId: uuid })
 const assetExportQuery = z.strictObject({
   query: z.string().trim().max(200).optional(),
@@ -143,6 +146,21 @@ export function registerFileRoutes(app: FastifyInstance, deps: FileRouteDeps): v
       return send(reply, { status: 200, body: { ok: true, data: assetImportUploadOutput.parse(preview) } })
     } catch (err) {
       return send(reply, toFailure(err, ctx.correlationId, deps.logger, 'assets.importUpload'))
+    }
+  })
+
+  // ---- reference-data CSV/Excel import (categories/models/suppliers/departments/teams/locations/
+  // workstations): stores an import session and returns the preview. Never writes records.
+  app.post('/api/v1/uploads/reference-import', async (req, reply) => {
+    const ctx = await guard(req, reply, { csrf: true })
+    if (!ctx) return reply
+    try {
+      const query = referenceImportUploadQuery.parse(req.query)
+      const file = await readSingleFile(req, IMPORT_MAX_BYTES)
+      const preview = await startReferenceImport(deps.db, query.kind, { fileName: file.fileName, data: file.data }, ctx)
+      return send(reply, { status: 200, body: { ok: true, data: referenceImportPreviewOutput.parse(preview) } })
+    } catch (err) {
+      return send(reply, toFailure(err, ctx.correlationId, deps.logger, 'referenceData.importUpload'))
     }
   })
 

@@ -3,7 +3,7 @@ import type { GoodsReceiptDetail, GoodsReceiptSummary, Page, PurchaseOrderDetail
 import type { UnitDisposition } from '@shared/procurement'
 import { UNIT_DISPOSITION_LABELS } from '@shared/procurement'
 import { ApiError, call, formatDateTime } from '../../api'
-import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField, useToast } from '../../components/ui'
 import { useLatestOnly } from '../../hooks'
 import { DiscrepancyBadge, useCategories } from '../procurement/shared'
 import { LocationPicker } from './LocationPicker'
@@ -166,7 +166,7 @@ function ReceiptDetail({ receiptId, session, onBack }: { receiptId: string; sess
   const has = (p: string) => session.permissions.includes(p as never)
   const [r, setR] = useState<GoodsReceiptDetail | null>(null)
   const [error, setError] = useState<unknown>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const toast = useToast()
   const [resolving, setResolving] = useState<string | null>(null)
   const guard = useLatestOnly()
   const load = useCallback(() => {
@@ -179,7 +179,6 @@ function ReceiptDetail({ receiptId, session, onBack }: { receiptId: string; sess
     <div className="stack">
       <PageHeader title={r.receiptNumber} description={`Order ${r.poNumber}, received ${formatDateTime(r.receivedAt)} by ${r.receivedByName ?? '—'}`} actions={<Button onClick={onBack}>All receipts</Button>} />
       <ErrorAlert error={error} />
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
       {r.items.map((i) => (
         <Panel key={i.id} title={i.description} actions={<DiscrepancyBadge status={i.discrepancyStatus} />}>
           <dl className="dl">
@@ -195,7 +194,7 @@ function ReceiptDetail({ receiptId, session, onBack }: { receiptId: string; sess
           {i.discrepancyStatus === 'open' && has('receipts.record') ? <Button small onClick={() => setResolving(i.id)}>Resolve discrepancy</Button> : null}
         </Panel>
       ))}
-      {resolving ? <ResolveDialog receiptItemId={resolving} onClose={() => setResolving(null)} onDone={(n) => { setResolving(null); setR(n); setNotice('Discrepancy resolved.') }} /> : null}
+      {resolving ? <ResolveDialog receiptItemId={resolving} onClose={() => setResolving(null)} onDone={(n) => { setResolving(null); setR(n); toast.success('Discrepancy resolved.') }} /> : null}
     </div>
   )
 }

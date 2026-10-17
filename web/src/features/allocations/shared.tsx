@@ -14,7 +14,7 @@ import type { AssetCustody, HandoverView, SessionInfo } from '@shared/api'
 import { CONDITION_LABELS } from '@shared/assets'
 import { apiUrl, call, downloadFile, formatDateTime, uploadFile } from '../../api'
 import { useLatestOnly } from '../../hooks'
-import { Alert, Button, ErrorAlert, SelectField, TextField } from '../../components/ui'
+import { Alert, Button, ErrorAlert, SelectField, TextField, useToast } from '../../components/ui'
 import { EmployeePicker, optionList } from '../organization/lookups'
 
 export type Target = { type: AssignmentTargetType; id: string } | null
@@ -155,7 +155,7 @@ export const ackPayload = (policy: AcknowledgmentPolicy, confirmed: boolean, nam
 export function HandoverReceipt({ handoverId, session, onClose }: { handoverId: string; session: SessionInfo; onClose: () => void }) {
   const [h, setH] = useState<HandoverView | null>(null)
   const [error, setError] = useState<unknown>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const toast = useToast()
   const [name, setName] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
   const has = (p: string) => session.permissions.includes(p as never)
@@ -172,10 +172,9 @@ export function HandoverReceipt({ handoverId, session, onClose }: { handoverId: 
   }, [onClose])
   const run = async (fn: () => Promise<unknown>, message: string) => {
     setError(null)
-    setNotice(null)
     try {
       await fn()
-      setNotice(message)
+      toast.success(message)
       await load()
     } catch (err) {
       setError(err)
@@ -198,7 +197,6 @@ export function HandoverReceipt({ handoverId, session, onClose }: { handoverId: 
       </div>
       <div className="stack receipt-actions no-print">
         <ErrorAlert error={error} />
-        {notice ? <Alert tone="success">{notice}</Alert> : null}
         {h && h.acknowledgmentStatus === 'pending' && canAcknowledge ? (
           <div className="toolbar toolbar--flush">
             {h.acknowledgmentPolicy !== 'signed_receipt' ? (

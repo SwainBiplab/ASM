@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react'
 import { ApiError } from '../api'
 
 type ButtonVariant = 'default' | 'primary' | 'danger' | 'quiet'
@@ -71,6 +71,78 @@ export function Alert({ tone, children }: { tone: 'success' | 'warn' | 'info' | 
     <div className={`alert alert--${tone}`} role={tone === 'error' ? 'alert' : 'status'}>
       {children}
     </div>
+  )
+}
+
+// ---------- Toast notifications ----------
+
+type ToastTone = 'success' | 'error' | 'info'
+interface ToastItem {
+  id: number
+  tone: ToastTone
+  message: string
+}
+interface ToastApi {
+  success: (message: string) => void
+  error: (message: string) => void
+  info: (message: string) => void
+}
+
+const ToastContext = createContext<ToastApi | null>(null)
+const TOAST_DURATION_MS = 5000
+
+/** Fire-and-forget confirmations (saved, deleted, sent...). Not for validation errors someone
+ * needs to read and act on -- those stay inline, anchored to the field or dialog they belong to. */
+export function useToast(): ToastApi {
+  const ctx = useContext(ToastContext)
+  if (!ctx) throw new Error('useToast must be used within a ToastProvider')
+  return ctx
+}
+
+export function ToastProvider({ children }: { children: ReactNode }) {
+  const [toasts, setToasts] = useState<ToastItem[]>([])
+  const nextId = useRef(0)
+
+  const dismiss = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), [])
+  const push = useCallback(
+    (tone: ToastTone, message: string) => {
+      const id = ++nextId.current
+      setToasts((t) => [...t, { id, tone, message }])
+      window.setTimeout(() => dismiss(id), TOAST_DURATION_MS)
+    },
+    [dismiss]
+  )
+  const api = useMemo<ToastApi>(() => ({ success: (m) => push('success', m), error: (m) => push('error', m), info: (m) => push('info', m) }), [push])
+
+  return (
+    <ToastContext.Provider value={api}>
+      {children}
+      <div className="toast-stack">
+        {toasts.map((t) => (
+          <div key={t.id} className={`toast toast--${t.tone}`} role={t.tone === 'error' ? 'alert' : 'status'} onClick={() => dismiss(t.id)}>
+            {t.message}
+          </div>
+        ))}
+      </div>
+    </ToastContext.Provider>
+  )
+}
+
+// ---------- Loading placeholders ----------
+
+/** Placeholder rows shown in a `<table class="grid">` body while its data is loading, in place of
+ * either a blank table or a spinner. */
+export function SkeletonRows({ count = 5, columns = 6 }: { count?: number; columns?: number }) {
+  return (
+    <>
+      {Array.from({ length: count }, (_, i) => (
+        <tr key={i} className="skeleton-row" aria-hidden="true">
+          <td colSpan={columns}>
+            <span className="skeleton-bar" />
+          </td>
+        </tr>
+      ))}
+    </>
   )
 }
 

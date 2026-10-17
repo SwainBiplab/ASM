@@ -4,7 +4,7 @@ import { RETURN_OUTCOME_LABELS, RETURN_OUTCOMES } from '@shared/allocations'
 import type { AssetListItem, MaintenanceTicketDetail, MaintenanceTicketSummary, Page, SessionInfo } from '@shared/api'
 import { formatMinor, minorToInput } from '@shared/assets'
 import { ApiError, apiUrl, call, downloadFile, formatDateTime, uploadFile } from '../../api'
-import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField, useToast } from '../../components/ui'
 import { useLatestOnly } from '../../hooks'
 import { AssetScanField, PriorityBadge, TicketStatusBadge, categoryOptions, priorityOptions, useTechnicians } from './shared'
 
@@ -142,7 +142,7 @@ function TicketDetail({ ticketId, session, onBack }: { ticketId: string; session
   const has = (p: string) => session.permissions.includes(p as never)
   const [t, setT] = useState<MaintenanceTicketDetail | null>(null)
   const [error, setError] = useState<unknown>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const toast = useToast()
   const guard = useLatestOnly()
   const load = useCallback(() => {
     setError(null)
@@ -159,7 +159,6 @@ function TicketDetail({ ticketId, session, onBack }: { ticketId: string; session
         actions={<Button onClick={onBack}>All tickets</Button>}
       />
       <ErrorAlert error={error} />
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
       <Panel>
         <div className="chips"><PriorityBadge priority={t.priority} /><TicketStatusBadge status={t.status} /> {t.overdue ? <span className="badge badge--off">Overdue</span> : null}</div>
         <dl className="dl">
@@ -176,7 +175,7 @@ function TicketDetail({ ticketId, session, onBack }: { ticketId: string; session
           {t.status === 'cancelled' ? (<><dt>Cancelled</dt><dd>{t.cancelReason}</dd></>) : null}
         </dl>
       </Panel>
-      {canWork || t.status === 'resolved' ? <TicketActions ticket={t} session={session} onChanged={(n, msg) => { setT(n); setNotice(msg) }} onError={setError} /> : null}
+      {canWork || t.status === 'resolved' ? <TicketActions ticket={t} session={session} onChanged={(n, msg) => { setT(n); toast.success(msg) }} onError={setError} /> : null}
       <DocumentsSection ticketId={t.id} documents={t.documents} canManage={canWork} onChanged={load} />
       <div>
         <h3 className="section-title">History</h3>

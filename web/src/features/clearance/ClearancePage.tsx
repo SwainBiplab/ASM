@@ -3,7 +3,7 @@ import { CLEARANCE_RESOLUTION_LABELS, RETURN_OUTCOME_LABELS, RETURN_OUTCOMES, UN
 import type { ClearanceDetail, ClearanceItemView, ClearanceSummary, Page, SessionInfo } from '@shared/api'
 import { CONDITION_LABELS, type AssetCondition } from '@shared/assets'
 import { ApiError, apiUrl, call, downloadFile, formatDateTime, uploadFile } from '../../api'
-import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField, useToast } from '../../components/ui'
 import { useLatestOnly } from '../../hooks'
 import { conditionOptions } from '../allocations/shared'
 import { EmployeePicker, optionList, useOrgLookups } from '../organization/lookups'
@@ -102,7 +102,7 @@ function ClearanceDetailView({ id, session, onBack }: { id: string; session: Ses
   const has = (p: string) => session.permissions.includes(p as never)
   const [d, setD] = useState<ClearanceDetail | null>(null)
   const [error, setError] = useState<unknown>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const toast = useToast()
   const [action, setAction] = useState<ItemAction>(null)
   const [closing, setClosing] = useState<'close' | 'cancel' | null>(null)
   const guard = useLatestOnly()
@@ -115,7 +115,7 @@ function ClearanceDetailView({ id, session, onBack }: { id: string; session: Ses
     setD(next)
     setAction(null)
     setClosing(null)
-    setNotice(message)
+    toast.success(message)
   }
   const evidence = async (item: ClearanceItemView, e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -124,7 +124,7 @@ function ClearanceDetailView({ id, session, onBack }: { id: string; session: Ses
     setError(null)
     try {
       await uploadFile('/api/v1/uploads/documents', file, { entityType: 'clearance_item', entityId: item.id, purpose: 'photo' })
-      setNotice(`Evidence ${file.name} attached to ${item.assetCode}.`)
+      toast.success(`Evidence ${file.name} attached to ${item.assetCode}.`)
       load()
     } catch (err) {
       setError(err)
@@ -146,7 +146,6 @@ function ClearanceDetailView({ id, session, onBack }: { id: string; session: Ses
         }
       />
       <ErrorAlert error={error} />
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
       {open && d.blockers.length ? (
         <Alert tone="warn">
           Cannot close yet:

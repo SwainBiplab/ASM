@@ -3,7 +3,7 @@ import type { PasswordResetRequestSummary, RoleSummary, SessionInfo, UserSummary
 import { PERMISSIONS, type PermissionKey } from '@shared/permissions'
 import { PASSWORD_MIN_LENGTH } from '@shared/constants'
 import { ApiError, call, formatDateTime } from '../../api'
-import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, TextField } from '../../components/ui'
+import { Button, Dialog, ErrorAlert, PageHeader, Panel, TextField, useToast } from '../../components/ui'
 
 type DialogState =
   | { kind: 'none' }
@@ -19,7 +19,7 @@ export function UsersPage({ session }: { session: SessionInfo }) {
   const [roles, setRoles] = useState<RoleSummary[]>([])
   const [resetRequests, setResetRequests] = useState<PasswordResetRequestSummary[]>([])
   const [error, setError] = useState<unknown>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const toast = useToast()
   const [dialog, setDialog] = useState<DialogState>({ kind: 'none' })
 
   const load = useCallback(async () => {
@@ -41,7 +41,7 @@ export function UsersPage({ session }: { session: SessionInfo }) {
   const roleName = (key: string) => roles.find((r) => r.key === key)?.name ?? key
   const done = (message: string) => {
     setDialog({ kind: 'none' })
-    setNotice(message)
+    toast.success(message)
     void load()
   }
   const close = useCallback(() => setDialog({ kind: 'none' }), [])
@@ -49,6 +49,7 @@ export function UsersPage({ session }: { session: SessionInfo }) {
   const dismissRequest = async (id: string) => {
     try {
       await call('passwordReset.dismiss', { id })
+      toast.success('Request dismissed.')
       void load()
     } catch (err) {
       setError(err)
@@ -65,7 +66,6 @@ export function UsersPage({ session }: { session: SessionInfo }) {
         actions={canUsers ? <Button variant="primary" onClick={() => setDialog({ kind: 'create' })}>Add user</Button> : null}
       />
       <ErrorAlert error={error} />
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
 
       {canUsers && pendingRequests.length > 0 ? (
         <Panel title="Password reset requests" flush>

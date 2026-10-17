@@ -90,7 +90,7 @@ export const catalogSetActiveSchema = z.strictObject({ id: uuidSchema, isActive:
 export const assetCodeConfigSchema = z.strictObject({
   prefix: z.string().trim().regex(/^[A-Z][A-Z0-9]{0,9}$/, 'Use 1–10 capital letters or digits, starting with a letter'),
   separator: z.enum(['-', '/', '']),
-  padding: z.number().int().min(3).max(10),
+  padding: z.number().int().min(2).max(10),
   nextNumber: z.number().int().min(1).max(9_999_999_999),
   reason: required(500)
 })

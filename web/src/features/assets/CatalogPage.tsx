@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import type { CategoryView, ModelView, SessionInfo, SupplierView } from '@shared/api'
 import { DOMAIN_LABELS, type AssetDomain, type TrackingMode } from '@shared/assets'
 import { ApiError, call } from '../../api'
-import { ActiveBadge, Button, Dialog, ErrorAlert, PageHeader, Panel, ReasonDialog, SelectField, Tabs, TextAreaField, TextField } from '../../components/ui'
+import { ActiveBadge, Button, Dialog, ErrorAlert, PageHeader, Panel, ReasonDialog, SelectField, Tabs, TextAreaField, TextField, useToast } from '../../components/ui'
 import { useLatestOnly } from '../../hooks'
 import { optionList } from '../organization/lookups'
+import { ReferenceImport } from '../organization/ReferenceImport'
 
 type Tab = 'categories' | 'models' | 'suppliers'
 const n = (s: string): string | null => (s.trim() === '' ? null : s)
@@ -69,8 +70,22 @@ function CategoriesTab({ canManage }: { canManage: boolean }) {
   const list = useList(useCallback((includeInactive: boolean) => call('categories.list', { includeInactive }), []))
   const [editing, setEditing] = useState<CategoryView | 'new' | null>(null)
   const [toggling, setToggling] = useState<CategoryView | null>(null)
+  const [importing, setImporting] = useState(false)
+  const toast = useToast()
+  if (importing) {
+    return <ReferenceImport kind="categories" onDone={(message) => { setImporting(false); if (message) toast.success(message); list.reload() }} />
+  }
   return (
-    <Panel flush title="Categories" actions={canManage ? <Button variant="primary" small onClick={() => setEditing('new')}>Add category</Button> : null}>
+    <Panel
+      flush
+      title="Categories"
+      actions={canManage ? (
+        <>
+          <Button small onClick={() => setImporting(true)}>Import CSV/Excel</Button>
+          <Button variant="primary" small onClick={() => setEditing('new')}>Add category</Button>
+        </>
+      ) : null}
+    >
       <InactiveToggle value={list.includeInactive} onChange={list.setIncludeInactive} />
       <ErrorAlert error={list.error} />
       <div className="table-wrap">
@@ -164,11 +179,25 @@ function ModelsTab({ canManage }: { canManage: boolean }) {
   const [categories, setCategories] = useState<CategoryView[]>([])
   const [editing, setEditing] = useState<ModelView | 'new' | null>(null)
   const [toggling, setToggling] = useState<ModelView | null>(null)
+  const [importing, setImporting] = useState(false)
+  const toast = useToast()
   useEffect(() => {
     call('categories.list', {}).then(setCategories, () => undefined)
   }, [])
+  if (importing) {
+    return <ReferenceImport kind="models" onDone={(message) => { setImporting(false); if (message) toast.success(message); list.reload() }} />
+  }
   return (
-    <Panel flush title="Models" actions={canManage ? <Button variant="primary" small disabled={!categories.length} onClick={() => setEditing('new')}>Add model</Button> : null}>
+    <Panel
+      flush
+      title="Models"
+      actions={canManage ? (
+        <>
+          <Button small onClick={() => setImporting(true)}>Import CSV/Excel</Button>
+          <Button variant="primary" small disabled={!categories.length} onClick={() => setEditing('new')}>Add model</Button>
+        </>
+      ) : null}
+    >
       <InactiveToggle value={list.includeInactive} onChange={list.setIncludeInactive} />
       <ErrorAlert error={list.error} />
       <div className="table-wrap">
@@ -239,8 +268,22 @@ function SuppliersTab({ canManage }: { canManage: boolean }) {
   const list = useList(useCallback((includeInactive: boolean) => call('suppliers.list', { includeInactive }), []))
   const [editing, setEditing] = useState<SupplierView | 'new' | null>(null)
   const [toggling, setToggling] = useState<SupplierView | null>(null)
+  const [importing, setImporting] = useState(false)
+  const toast = useToast()
+  if (importing) {
+    return <ReferenceImport kind="suppliers" onDone={(message) => { setImporting(false); if (message) toast.success(message); list.reload() }} />
+  }
   return (
-    <Panel flush title="Suppliers" actions={canManage ? <Button variant="primary" small onClick={() => setEditing('new')}>Add supplier</Button> : null}>
+    <Panel
+      flush
+      title="Suppliers"
+      actions={canManage ? (
+        <>
+          <Button small onClick={() => setImporting(true)}>Import CSV/Excel</Button>
+          <Button variant="primary" small onClick={() => setEditing('new')}>Add supplier</Button>
+        </>
+      ) : null}
+    >
       <InactiveToggle value={list.includeInactive} onChange={list.setIncludeInactive} />
       <ErrorAlert error={list.error} />
       <div className="table-wrap">

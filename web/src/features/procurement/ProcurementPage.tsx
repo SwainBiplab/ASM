@@ -3,7 +3,7 @@ import type { Page, PurchaseRequestDetail, PurchaseRequestSummary, SessionInfo }
 import type { RequestItemInput, SaveRequestDraftInput } from '@shared/procurementSchemas'
 import { formatMinor } from '@shared/assets'
 import { ApiError, apiUrl, call, downloadFile, formatDateTime, uploadFile } from '../../api'
-import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField, useToast } from '../../components/ui'
 import { useLatestOnly } from '../../hooks'
 import { RequestStatusBadge, useCategories } from './shared'
 
@@ -133,7 +133,7 @@ function RequestDetail({ requestId, session, onBack }: { requestId: string; sess
   const has = (p: string) => session.permissions.includes(p as never)
   const [r, setR] = useState<PurchaseRequestDetail | null>(null)
   const [error, setError] = useState<unknown>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const toast = useToast()
   const [editing, setEditing] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const guard = useLatestOnly()
@@ -152,7 +152,7 @@ function RequestDetail({ requestId, session, onBack }: { requestId: string; sess
     setError(null)
     try {
       setR(await call('procurement.submit', { requestId: r.id }))
-      setNotice('Request submitted for approval.')
+      toast.success('Request submitted for approval.')
     } catch (err) {
       setError(err)
     }
@@ -161,7 +161,6 @@ function RequestDetail({ requestId, session, onBack }: { requestId: string; sess
     <div className="stack">
       <PageHeader title={`${r.requestNumber}`} description={r.justification} actions={<Button onClick={onBack}>All requests</Button>} />
       <ErrorAlert error={error} />
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
       <Panel>
         <div className="chips"><RequestStatusBadge status={r.status} /></div>
         <dl className="dl">
@@ -197,7 +196,7 @@ function RequestDetail({ requestId, session, onBack }: { requestId: string; sess
       ) : null}
       <DocumentsSection requestId={r.id} documents={r.documents} canManage={canEdit} onChanged={load} />
       {editing ? <DraftEditor existing={r} onClose={() => setEditing(false)} onDone={(n) => { setEditing(false); setR(n) }} /> : null}
-      {cancelling ? <CancelDialog requestId={r.id} onClose={() => setCancelling(false)} onDone={(n) => { setCancelling(false); setR(n); setNotice('Request cancelled.') }} /> : null}
+      {cancelling ? <CancelDialog requestId={r.id} onClose={() => setCancelling(false)} onDone={(n) => { setCancelling(false); setR(n); toast.success('Request cancelled.') }} /> : null}
     </div>
   )
 }

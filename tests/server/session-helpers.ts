@@ -88,3 +88,10 @@ export async function uploadAssetImport(a: ApiSession, content: string | Uint8Ar
   if (!r.body.ok) throw new Error(`asset import upload failed: ${JSON.stringify(r.body)}`)
   return r.body.data as CommandMap['assets.importPreview']['output'] | { needsSheetSelection: true; sheets: string[] }
 }
+
+/** Uploads a CSV through the real reference-data-import route for the given entity kind. */
+export async function uploadReferenceImport(a: ApiSession, kind: string, content: string, name = 'import.csv') {
+  const r = await a.upload(`/api/v1/uploads/reference-import?kind=${kind}`, { name, content, type: 'text/csv' })
+  if (!r.body.ok) throw new Error(`reference import upload failed: ${JSON.stringify(r.body)}`)
+  return r.body.data as CommandMap['referenceData.importPreview']['output']
+}

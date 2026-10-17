@@ -122,7 +122,7 @@ test('transfers, returns and inspects through the asset page, keeping the chain 
   const ret = page.getByRole('dialog', { name: 'Receive returned assets' })
   await ret.getByLabel('Condition').selectOption({ label: 'Good' })
   await ret.getByRole('button', { name: 'Record return' }).click()
-  await expect(custody).toContainText('Return recorded')
+  await expect(page.getByText('Return recorded')).toBeVisible()
   await expect(custody).toContainText('Not assigned')
   // Not available until inspected.
   await expect(custody).toContainText('not ready for issue')

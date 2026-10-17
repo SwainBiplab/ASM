@@ -70,6 +70,14 @@ describe('asset codes', () => {
     await a.becomeNewUser('am.codes', ['asset_manager'])
     expect(await a.call('assets.updateCodeConfig', { prefix: 'HACK', separator: '-', padding: 6, nextNumber: 99, reason: 'x' })).toMatchObject({ ok: false, error: { code: 'PERMISSION_DENIED' } })
   })
+
+  it('allows the padding minimum of 2 digits and rejects anything below it', async () => {
+    const a = await session()
+    const { chair } = await catalog(a)
+    expect(await a.call('assets.updateCodeConfig', { prefix: 'AST', separator: '-', padding: 1, nextNumber: 1, reason: 'x' })).toMatchObject({ ok: false, error: { code: 'VALIDATION_ERROR' } })
+    await a.ok('assets.updateCodeConfig', { prefix: 'AST', separator: '-', padding: 2, nextNumber: 7, reason: 'short codes' })
+    expect((await a.ok('assets.create', asset(chair.id))).assetCode).toBe('AST-07')
+  })
 })
 
 describe('asset rules', () => {

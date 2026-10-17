@@ -3,7 +3,7 @@ import type { ApprovalPolicySummary, ApprovalQueueItem, Page, SessionInfo } from
 import type { ApprovalStepInput, SaveApprovalPolicyInput } from '@shared/procurementSchemas'
 import { formatMinor } from '@shared/assets'
 import { ApiError, call, formatDateTime } from '../../api'
-import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, Tabs, TextAreaField, TextField } from '../../components/ui'
+import { Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, Tabs, TextAreaField, TextField, useToast } from '../../components/ui'
 import { useLatestOnly } from '../../hooks'
 import { useRoles, useUsers } from '../procurement/shared'
 
@@ -26,7 +26,7 @@ export function ApprovalsPage({ session }: { session: SessionInfo; selectedId: s
 function QueueTab() {
   const [data, setData] = useState<Page<ApprovalQueueItem> | null>(null)
   const [error, setError] = useState<unknown>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const toast = useToast()
   const [deciding, setDeciding] = useState<ApprovalQueueItem | null>(null)
   const guard = useLatestOnly()
   const load = useCallback(() => {
@@ -37,7 +37,6 @@ function QueueTab() {
   return (
     <Panel flush>
       <ErrorAlert error={error} onRetry={load} />
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
       <div className="table-wrap">
         <table className="grid" aria-label="Approval queue">
           <thead><tr><th>Request</th><th>Requester</th><th>Justification</th><th>Amount</th><th>Step</th><th>Submitted</th><th /></tr></thead>
@@ -57,7 +56,7 @@ function QueueTab() {
         </table>
         {data && data.items.length === 0 ? <div className="empty">Nothing is waiting for your decision.</div> : null}
       </div>
-      {deciding ? <DecideDialog item={deciding} onClose={() => setDeciding(null)} onDone={(msg) => { setDeciding(null); setNotice(msg); load() }} /> : null}
+      {deciding ? <DecideDialog item={deciding} onClose={() => setDeciding(null)} onDone={(msg) => { setDeciding(null); toast.success(msg); load() }} /> : null}
     </Panel>
   )
 }

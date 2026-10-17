@@ -23,7 +23,7 @@ import {
   type WarrantyFilter
 } from '@shared/assets'
 import { ApiError, apiUrl, call, downloadFile, formatBytes, formatDateTime, uploadFile } from '../../api'
-import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { Alert, Button, Dialog, ErrorAlert, PageHeader, Panel, SelectField, SkeletonRows, TextAreaField, TextField, useToast } from '../../components/ui'
 import { useLatestOnly } from '../../hooks'
 import { optionList } from '../organization/lookups'
 import { LabelSheet, LifecycleBadge, OperationalBadge, WarrantyNote, conditionLabel } from './shared'
@@ -61,7 +61,7 @@ export function AssetsPage({ session, selectedId, navigate }: { session: Session
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [detail, setDetail] = useState<AssetDetail | null>(null)
   const [error, setError] = useState<unknown>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const toast = useToast()
   const [editing, setEditing] = useState<AssetDetail | 'new' | null>(null)
   const [labelIds, setLabelIds] = useState<string[] | null>(null)
 
@@ -116,7 +116,7 @@ export function AssetsPage({ session, selectedId, navigate }: { session: Session
       const { page: _p, pageSize: _s, ...filtersOnly } = searchInput
       const query = Object.fromEntries(Object.entries(filtersOnly).map(([k, v]) => [k, v === undefined || v === null ? undefined : String(v)]))
       const name = await downloadFile(apiUrl('/api/v1/exports/assets.csv', query), 'assets.csv')
-      setNotice(`Downloaded ${name}.`)
+      toast.success(`Downloaded ${name}.`)
     } catch (err) {
       setError(err)
     }
@@ -124,7 +124,7 @@ export function AssetsPage({ session, selectedId, navigate }: { session: Session
 
   const afterSave = (a: AssetDetail, message: string) => {
     setEditing(null)
-    setNotice(message)
+    toast.success(message)
     load()
     if (a.id === selectedId) setDetail(a)
     else navigate(`assets/${a.id}`)
@@ -135,7 +135,7 @@ export function AssetsPage({ session, selectedId, navigate }: { session: Session
       <AssetImport
         onDone={(message) => {
           setMode('list')
-          if (message) setNotice(message)
+          if (message) toast.success(message)
           load()
         }}
       />
@@ -158,7 +158,6 @@ export function AssetsPage({ session, selectedId, navigate }: { session: Session
         }
       />
       <ErrorAlert error={error} />
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
       <div className={detail ? 'split' : 'split split--single'}>
         <Panel flush title={data ? `${data.total} asset${data.total === 1 ? '' : 's'}` : 'Assets'}>
           <div className="toolbar">
@@ -197,6 +196,7 @@ export function AssetsPage({ session, selectedId, navigate }: { session: Session
                 </tr>
               </thead>
               <tbody>
+                {!data && !error ? <SkeletonRows columns={8} /> : null}
                 {data?.items.map((a) => (
                   <tr key={a.id} className={`is-clickable ${selectedId === a.id ? 'is-selected' : ''}`} onClick={() => navigate(`assets/${a.id}`)}>
                     {has('labels.print') ? (
@@ -235,7 +235,7 @@ export function AssetsPage({ session, selectedId, navigate }: { session: Session
             onEdit={() => setEditing(detail)}
             onChanged={(a, message) => {
               setDetail(a)
-              setNotice(message)
+              toast.success(message)
               load()
             }}
             onReload={loadDetail}
@@ -342,12 +342,11 @@ function DocumentsSection({ asset, canManage, onChanged }: { asset: AssetDetail;
   const [inputKey, setInputKey] = useState(0)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<unknown>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const toast = useToast()
   const [removing, setRemoving] = useState<string | null>(null)
   const [reason, setReason] = useState('')
   const run = async (label: string, fn: () => Promise<unknown>) => {
     setError(null)
-    setNotice(null)
     setBusy(label)
     try {
       await fn()
@@ -363,7 +362,7 @@ function DocumentsSection({ asset, canManage, onChanged }: { asset: AssetDetail;
       await uploadFile('/api/v1/uploads/documents', file, { entityType: 'asset', entityId: asset.id, purpose })
       setFile(null)
       setInputKey((k) => k + 1)
-      setNotice(`Uploaded ${file.name}.`)
+      toast.success(`Uploaded ${file.name}.`)
       onChanged()
     })
   const contentUrl = (documentId: string) => apiUrl(`/api/v1/documents/${encodeURIComponent(documentId)}/content`)
@@ -371,7 +370,6 @@ function DocumentsSection({ asset, canManage, onChanged }: { asset: AssetDetail;
     <div>
       <h3 className="section-title">Documents ({asset.documents.length})</h3>
       <ErrorAlert error={error} />
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
       {asset.documents.length === 0 ? <p className="faint">No documents attached.</p> : null}
       {asset.documents.map((d) => (
         <div className="doc-row" key={d.linkId}>

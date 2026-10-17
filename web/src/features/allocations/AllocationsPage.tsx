@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { ASSIGNMENT_STATUS_LABELS, ASSIGNMENT_STATUSES, ASSIGNMENT_TARGET_TYPES, TARGET_TYPE_LABELS, type AssignmentStatus, type AssignmentTargetType } from '@shared/allocations'
 import type { AssignmentView, Page, SessionInfo } from '@shared/api'
 import { call, formatDateTime } from '../../api'
-import { Alert, Button, ErrorAlert, PageHeader, Panel, SelectField, TextField } from '../../components/ui'
+import { Button, ErrorAlert, PageHeader, Panel, SelectField, SkeletonRows, TextField, useToast } from '../../components/ui'
 import { useLatestOnly } from '../../hooks'
 import { IssueDialog, ReturnDialog, TransferDialog } from './dialogs'
 import { AckBadge, AssignmentStatusBadge, HandoverReceipt, type PickedAsset } from './shared'
@@ -23,7 +23,7 @@ export function AllocationsPage({ session, navigate }: { session: SessionInfo; n
   const [error, setError] = useState<unknown>(null)
   const [open, setOpen] = useState<Open>(null)
   const [receipt, setReceipt] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const toast = useToast()
 
   const guard = useLatestOnly()
   const load = useCallback(() => {
@@ -45,7 +45,7 @@ export function AllocationsPage({ session, navigate }: { session: SessionInfo; n
   }
   const done = (message: string, handoverId?: string) => {
     setOpen(null)
-    setNotice(message)
+    toast.success(message)
     if (handoverId) setReceipt(handoverId)
     load()
   }
@@ -63,7 +63,6 @@ export function AllocationsPage({ session, navigate }: { session: SessionInfo; n
           </>
         }
       />
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
       <ErrorAlert error={error} onRetry={load} />
       <Panel flush>
         <div className="toolbar">
@@ -79,6 +78,7 @@ export function AllocationsPage({ session, navigate }: { session: SessionInfo; n
           <table className="grid" aria-label="Assignments">
             <thead><tr><th>Asset</th><th>Assigned to</th><th>Location</th><th>Since</th><th>Expected return</th><th>Status</th><th className="actions" aria-label="Actions" /></tr></thead>
             <tbody>
+              {!data && !error ? <SkeletonRows columns={7} /> : null}
               {data?.items.map((a) => (
                 <tr key={a.id}>
                   <td className="ident">
@@ -102,7 +102,6 @@ export function AllocationsPage({ session, navigate }: { session: SessionInfo; n
             </tbody>
           </table>
           {data && data.items.length === 0 ? <div className="empty">{status === 'active' && !query ? 'No assets are assigned yet. Use "Issue assets" to record the first handover.' : 'No assignments match these filters.'}</div> : null}
-          {!data && !error ? <div className="empty" role="status">Loading assignments…</div> : null}
         </div>
         {data && data.total > PAGE_SIZE ? (
           <div className="toolbar">
